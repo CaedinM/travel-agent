@@ -72,3 +72,4 @@ wcwidth==0.8.3
 websockets==16.1.1
 xxhash==4.0.1
 zstandard==0.25.0
+flights-mcp @ git+https://github.com/CaedinM/flights-mcp.git@749d7ad14cce86cd1ecd2c236c30b272f23f2d1e

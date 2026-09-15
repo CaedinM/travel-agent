@@ -87,3 +87,27 @@ Dates must be in the future; Duffel rejects anything else.
 **Activate the venv first.** The agent launches `flights-mcp` via `PATH`, and if another
 Python's copy is found first the MCP server dies immediately with `McpError: Connection
 closed`.
+
+## Web API
+
+Start the HTTP server after installing the updated dependencies:
+
+```bash
+source .venv/bin/activate
+uvicorn api:app --app-dir src --reload
+```
+
+Send a message with `POST /chat`:
+
+```bash
+curl -X POST http://127.0.0.1:8000/chat \
+  -H 'Content-Type: application/json' \
+  -d '{"message":"I want to fly from London to Paris next month"}'
+```
+
+The response includes the agent's reply and a `thread_id`. Send that same `thread_id`
+with later messages to preserve the itinerary and conversation state:
+
+```json
+{"message":"Find me flights", "thread_id":"<thread-id>"}
+```

@@ -4,6 +4,8 @@ from contextlib import asynccontextmanager
 import uuid
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from langchain.messages import HumanMessage
 
@@ -36,6 +38,13 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Travel Agent API", lifespan=lifespan)
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
+
+
+@app.get("/", include_in_schema=False)
+async def chat_interface() -> FileResponse:
+    """Serve the small browser client alongside the API."""
+    return FileResponse("frontend/index.html")
 
 
 @app.post("/chat", response_model=ChatResponse)

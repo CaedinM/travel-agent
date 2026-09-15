@@ -88,6 +88,22 @@ Dates must be in the future; Duffel rejects anything else.
 Python's copy is found first the MCP server dies immediately with `McpError: Connection
 closed`.
 
+## Frontend
+
+The React chat interface is served by the FastAPI application—there is no separate
+Node install or frontend development server to run.
+
+Start the app from the project root:
+
+```bash
+source .venv/bin/activate
+uvicorn api:app --app-dir src --reload
+```
+
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000) in your browser. The frontend sends
+messages to the local `/chat` endpoint and automatically retains the conversation ID
+for follow-up messages. Stop the server with `Ctrl+C`.
+
 ## Web API
 
 Start the HTTP server after installing the updated dependencies:

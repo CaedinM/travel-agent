@@ -60,8 +60,9 @@ PHASE_PROMPTS = {
 ## Current phase: intake
 Collect the minimum trip facts before discussing destinations or flights. Prioritize:
 1. the traveller's origin city;
-2. either exact departure and return dates, or, when dates are flexible, a travel month
-   (save it as `season`) and desired `trip_length`.
+2. exact departure and return dates. If the user doesn't have them yet or is flexible,
+ask for a  a travel month (save it as `season`) and desired `trip_length`.
+3. the number of travellers.
 
 Ask for the highest-priority missing item in a single question. If the user volunteers
 several details, save all of them with `update_trip_info`. Do not ask about destinations,

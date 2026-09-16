@@ -45,6 +45,10 @@ class TripState(AgentState):
         str | None,
         Field(description="Overall return date in YYYY-MM-DD format, if known."),
     ]
+    travelers: Annotated[
+        int | None,
+        Field(default=None, ge=1, description="Number of people travelling, if known."),
+    ]
     season: Annotated[
         str | None,
         Field(description="Preferred travel season when exact dates are not settled, e.g. 'spring 2027'."),

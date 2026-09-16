@@ -11,7 +11,7 @@ from langchain.messages import HumanMessage
 
 from agents import build_orchestrator_agent
 from resources import open_resources
-from state import INITIAL_TRIP_PHASE
+from state import INITIAL_TRIP_PHASE, TripPhase
 
 
 class ChatRequest(BaseModel):
@@ -27,6 +27,53 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     thread_id: str
+
+
+class TripProgressResponse(BaseModel):
+    """The small, client-safe subset of a trip used by the planning sidebar."""
+
+    thread_id: str
+    phase: TripPhase
+    origin: str | None = None
+    departure_date: str | None = None
+    return_date: str | None = None
+    season: str | None = None
+    destinations: list[str] = Field(default_factory=list)
+    travelers: int | None = None
+    flights_ready: bool = False
+    accommodations_ready: bool = False
+
+
+def trip_progress(thread_id: str, state: dict) -> TripProgressResponse:
+    """Project persisted state into the sidebar contract without exposing messages/offers."""
+    origin = state.get("origin")
+    legs = state.get("legs") or []
+
+    def field(leg: object, name: str):
+        return leg.get(name) if isinstance(leg, dict) else getattr(leg, name, None)
+
+    destinations = [
+        destination
+        for leg in legs
+        if (destination := field(leg, "destination")) and destination != origin
+    ]
+    flights_ready = bool(legs) and all(field(leg, "offer") is not None for leg in legs)
+    try:
+        phase = TripPhase(state.get("phase", INITIAL_TRIP_PHASE))
+    except (TypeError, ValueError):
+        phase = INITIAL_TRIP_PHASE
+
+    return TripProgressResponse(
+        thread_id=thread_id,
+        phase=phase,
+        origin=origin,
+        departure_date=state.get("departure_date"),
+        return_date=state.get("return_date"),
+        season=state.get("season"),
+        destinations=destinations,
+        travelers=state.get("travelers"),
+        flights_ready=flights_ready,
+    )
 
 
 @asynccontextmanager
@@ -46,6 +93,17 @@ app.mount("/static", StaticFiles(directory="frontend"), name="static")
 async def chat_interface() -> FileResponse:
     """Serve the small browser client alongside the API."""
     return FileResponse("frontend/index.html")
+
+
+@app.get("/trips/{thread_id}/progress", response_model=TripProgressResponse)
+async def get_trip_progress(thread_id: str, request: Request) -> TripProgressResponse:
+    """Return the persisted planning fields for one chat thread."""
+    config = {"configurable": {"thread_id": thread_id}}
+    snapshot = await request.app.state.agent.aget_state(config)
+    state = dict(snapshot.values or {})
+    if not state:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    return trip_progress(thread_id, state)
 
 
 @app.post("/chat", response_model=ChatResponse)

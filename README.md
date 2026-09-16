@@ -127,3 +127,12 @@ with later messages to preserve the itinerary and conversation state:
 ```json
 {"message":"Find me flights", "thread_id":"<thread-id>"}
 ```
+
+The current planning checklist for a conversation is available at:
+
+```text
+GET /trips/<thread-id>/progress
+```
+
+It returns the collected origin, dates, itinerary destination codes, traveller count,
+and workflow status without returning the chat history or flight-offer details.

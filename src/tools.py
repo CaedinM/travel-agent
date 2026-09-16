@@ -30,19 +30,21 @@ def web_search(query: str) -> str:
 def update_trip_info(
     runtime: ToolRuntime,
     origin: str | None = None,
+    travelers: int | None = None,
     season: str | None = None,
     departure_date: str | None = None,
     return_date: str | None = None,
     trip_length: str | None = None,
     budget: str | None = None
     ) -> Command:
-    """Save any trip details the user has provided. Pass only the fields
-    the user mentioned this turn and leave the rest as None.
+    """Save any trip details the user has provided, including traveller count.
+    Pass only the fields the user mentioned this turn and leave the rest as None.
 
     Destinations are not saved here — use set_trip_legs for the itinerary."""
 
     updates = {k: v for k, v in {
         "origin": origin,
+        "travelers": travelers,
         "season": season,
         "departure_date": departure_date,
         "return_date": return_date,

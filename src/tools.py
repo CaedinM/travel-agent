@@ -12,6 +12,7 @@ from datetime import date
 
 from models import Leg, BestOffer
 from flight_options import parse_offers, dedupe, format_options
+from workflow import apply_phase_transition
 
 load_dotenv()
 
@@ -50,7 +51,7 @@ def update_trip_info(
         "messages": [ToolMessage("Success", tool_call_id=runtime.tool_call_id)]
     }.items() if v is not None}
 
-    return Command(update=updates)
+    return Command(update=apply_phase_transition(runtime.state, updates))
 
 
 def _leg_key(leg: Leg) -> tuple[str, str, str | None]:
@@ -94,10 +95,13 @@ def set_trip_legs(runtime: ToolRuntime, legs: list[Leg]) -> Command:
 
     summary = f"Saved {len(merged)} leg(s):\n{_describe_legs(merged)}"
 
-    return Command(update={
+    updates = {
         "legs": merged,
+        # Any itinerary replacement requires the traveller to reconfirm its offers.
+        "flights_confirmed": False,
         "messages": [ToolMessage(summary, tool_call_id=runtime.tool_call_id)],
-        })
+    }
+    return Command(update=apply_phase_transition(runtime.state, updates))
 
 
 def _mcp_json(raw) -> dict:
@@ -263,7 +267,34 @@ async def call_flights_agent(
     if preferences:
         updates["flight_preferences"] = preferences
 
-    return Command(update=updates)
+    return Command(update=apply_phase_transition(runtime.state, updates))
+
+
+@tool
+def confirm_flights(runtime: ToolRuntime) -> Command | str:
+    """Record that the traveller has accepted every saved flight offer.
+
+    Call this only after the traveller explicitly confirms that the presented flights
+    work for them. It does not accept a phase argument; the backend advances the
+    workflow automatically when confirmation is valid.
+    """
+    legs = runtime.state.get("legs") or []
+    if not legs or any(leg.offer is None for leg in legs):
+        return (
+            "Cannot confirm flights until every itinerary leg has a saved offer. "
+            "Search any remaining legs first."
+        )
+
+    updates = {
+        "flights_confirmed": True,
+        "messages": [
+            ToolMessage(
+                "Flights confirmed. Moving on to accommodation planning.",
+                tool_call_id=runtime.tool_call_id,
+            )
+        ],
+    }
+    return Command(update=apply_phase_transition(runtime.state, updates))
 
 
 @tool

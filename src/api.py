@@ -11,6 +11,7 @@ from langchain.messages import HumanMessage
 
 from agents import build_orchestrator_agent
 from resources import open_resources
+from state import INITIAL_TRIP_PHASE
 
 
 class ChatRequest(BaseModel):
@@ -54,11 +55,15 @@ async def chat(payload: ChatRequest, request: Request) -> ChatResponse:
     if not message:
         raise HTTPException(status_code=422, detail="message must not be blank")
 
+    is_new_trip = payload.thread_id is None
     thread_id = payload.thread_id or str(uuid.uuid4())
     config = {"configurable": {"thread_id": thread_id}}
+    agent_input = {"messages": [HumanMessage(content=message)]}
+    if is_new_trip:
+        agent_input["phase"] = INITIAL_TRIP_PHASE
 
     result = await request.app.state.agent.ainvoke(
-        {"messages": [HumanMessage(content=message)]},
+        agent_input,
         config=config,
         context=request.app.state.resources,
     )

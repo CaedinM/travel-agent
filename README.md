@@ -34,21 +34,14 @@ Start the app:
 uvicorn api:app --app-dir src --reload
 ```
 
-
 ## Stack
 
-- Frontend: React 18.3.1 and React DOM, loaded in-browser
-- Backend: Python 3.12, FastAPI, and Uvicorn
-- Agents: LangChain, LangGraph, and OpenAI (`gpt-5` / `gpt-5-mini`)
-- Flight search: Duffel via the `flights-mcp` MCP server
-- Destination research: Tavily
-- State: In-memory LangGraph checkpointer
+- Frontend: React 18.3.1
+- Backend: FastAPI, LangChain/LangGraph, Uvicorn
+- Models: OpenAI (`gpt-5` / `gpt-5-mini`)
+- Flight Search: Duffel via the `flights-mcp` MCP server
+- Web Search: Tavily
 - Observability: LangSmith (optional)
-
-## Stack
-
-Frontend: React 18.3.1
-Backend: FastAPI, LangChain/LangGraph
 
 ## Project layout
 

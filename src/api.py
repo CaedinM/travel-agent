@@ -1,18 +1,25 @@
 """HTTP interface for the travel-planning agent."""
 
+import os
+from dotenv import load_dotenv
+
 from contextlib import asynccontextmanager
 import uuid
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from langchain.messages import HumanMessage
 
-from agents import build_orchestrator_agent
+from agents.orchestrator import build_orchestrator_agent
 from resources import open_resources
 from state import INITIAL_TRIP_PHASE, TripPhase
 
+import redis.asyncio as redis
+
+load_dotenv()
+redis_url = os.environ["REDIS_URL"]
 
 class ChatRequest(BaseModel):
     """A message sent by a frontend user to the travel agent."""
@@ -78,15 +85,47 @@ def trip_progress(thread_id: str, state: dict) -> TripProgressResponse:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Open the MCP connection once, and close it when the server stops."""
-    async with open_resources() as resources:
-        app.state.resources = resources
-        app.state.agent = build_orchestrator_agent()
-        yield
+    """Open shared service connections once and close them at shutdown."""
+    redis_client = redis.from_url(redis_url)
+    app.state.redis = redis_client
+    try:
+        async with open_resources() as resources:
+            app.state.resources = resources
+            app.state.agent = build_orchestrator_agent()
+            yield
+    finally:
+        await redis_client.aclose()
 
 
 app = FastAPI(title="Travel Agent API", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
+
+LIMIT = 10
+WINDOW = 60
+
+_INCREMENT_WITH_EXPIRY = """
+local count = redis.call('INCR', KEYS[1])
+if count == 1 then
+    redis.call('EXPIRE', KEYS[1], ARGV[1])
+end
+return {count, redis.call('TTL', KEYS[1])}
+"""
+
+
+async def rate_limit(request: Request) -> None:
+    """Enforce the per-client fixed-window limit for chat requests."""
+    client_id = request.client.host if request.client else "unknown"
+    key = f"rate_limit:{client_id}"
+
+    count, ttl = await request.app.state.redis.eval(
+        _INCREMENT_WITH_EXPIRY, 1, key, WINDOW
+    )
+    if count > LIMIT:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded. Try again in {ttl}s.",
+            headers={"Retry-After": str(max(ttl, 0))},
+        )
 
 
 @app.get("/", include_in_schema=False)
@@ -106,7 +145,7 @@ async def get_trip_progress(thread_id: str, request: Request) -> TripProgressRes
     return trip_progress(thread_id, state)
 
 
-@app.post("/chat", response_model=ChatResponse)
+@app.post("/chat", response_model=ChatResponse, dependencies=[Depends(rate_limit)])
 async def chat(payload: ChatRequest, request: Request) -> ChatResponse:
     """Send a message to the agent and return its final reply."""
     message = payload.message.strip()

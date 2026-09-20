@@ -96,7 +96,18 @@ class ChatErrorBoundary extends Component {
   render() { return this.state.failed ? <main className="app-shell fallback"><p>Something interrupted the chat interface.</p><button onClick={() => window.location.reload()}>Reload chat</button></main> : this.props.children; }
 }
 
-function App() {
+function UserMenu({ clerk }) {
+  const userButtonRef = useRef(null);
+  useEffect(() => {
+    const container = userButtonRef.current;
+    if (!container) return undefined;
+    clerk.mountUserButton(container);
+    return () => clerk.unmountUserButton(container);
+  }, [clerk]);
+  return <div className="user-menu" ref={userButtonRef} aria-label="Account menu" />;
+}
+
+function App({ clerk }) {
   const [messages, setMessages] = useState([]);
   const [threadId, setThreadId] = useState(null);
   const [progress, setProgress] = useState(null);
@@ -106,7 +117,8 @@ function App() {
   const refreshProgress = async (nextThreadId) => {
     const requestId = ++progressRequest.current;
     try {
-      const response = await fetch(`/trips/${encodeURIComponent(nextThreadId)}/progress`);
+      const token = await clerk.session?.getToken();
+      const response = await fetch(`/trips/${encodeURIComponent(nextThreadId)}/progress`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       const data = await response.json().catch(() => null);
       if (!response.ok || !data) throw new Error("Trip progress is unavailable.");
       if (requestId === progressRequest.current) setProgress(data);
@@ -121,7 +133,8 @@ function App() {
     setError("");
     setIsSending(true);
     try {
-      const response = await fetch("/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message, thread_id: threadId }) });
+      const token = await clerk.session?.getToken();
+      const response = await fetch("/chat", { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ message, thread_id: threadId }) });
       const data = await response.json().catch(() => null);
       if (!response.ok || !data) throw new Error(data?.detail || "The agent couldn’t respond just now.");
       const nextThreadId = data.thread_id ?? threadId;
@@ -133,7 +146,67 @@ function App() {
     } finally { setIsSending(false); }
   };
   const resetConversation = () => { progressRequest.current += 1; setMessages([]); setThreadId(null); setProgress(null); setError(""); };
-  return <main className="app-shell"><header className="topbar"><a className="wordmark" href="/" aria-label="Travel Agentic home">Travel Agentic<span>.</span></a><button className="new-chat" onClick={resetConversation}>New conversation</button></header><div className="workspace"><div className="chat-column"><MessageStream messages={messages} isSending={isSending} error={error} onStarter={sendMessage} /><ChatComposer disabled={isSending} onSend={sendMessage} /></div><TripProgress progress={progress} /></div></main>;
+  return <main className="app-shell"><header className="topbar"><a className="wordmark" href="/" aria-label="Travel Agentic home">Travel Agentic<span>.</span></a><button className="new-chat" onClick={resetConversation}>New conversation</button><UserMenu clerk={clerk} /></header><div className="workspace"><div className="chat-column"><MessageStream messages={messages} isSending={isSending} error={error} onStarter={sendMessage} /><ChatComposer disabled={isSending} onSend={sendMessage} /></div><TripProgress progress={progress} /></div></main>;
 }
 
-createRoot(document.getElementById("root")).render(<ChatErrorBoundary><App /></ChatErrorBoundary>);
+function SignIn({ clerk }) {
+  const signInRef = useRef(null);
+  useEffect(() => {
+    const container = signInRef.current;
+    if (!container) return undefined;
+    clerk.mountSignIn(container, {
+      forceRedirectUrl: window.location.href,
+      appearance: {
+        variables: { colorPrimary: "#1f5c47", fontFamily: "Manrope, sans-serif", borderRadius: "12px" },
+        elements: {
+          rootBox: "clerk-root",
+          card: "clerk-card",
+          headerTitle: "clerk-heading",
+          headerSubtitle: "clerk-subtitle",
+          socialButtonsBlockButton: "clerk-social-button",
+          formButtonPrimary: "clerk-submit",
+        },
+      },
+    });
+    return () => clerk.unmountSignIn(container);
+  }, [clerk]);
+  return <main className="auth-shell"><section className="auth-content" aria-label="Sign in"><a className="wordmark" href="/">Travel Agentic<span>.</span></a><p className="auth-intro">Sign in to save private trip plans and conversations.</p><div ref={signInRef} /></section></main>;
+}
+
+function BootError({ message }) { return <main className="auth-shell"><section className="auth-card"><a className="wordmark" href="/">Travel Agentic<span>.</span></a><p className="error">{message}</p></section></main>; }
+
+async function bootstrap() {
+  try {
+    const configResponse = await fetch("/auth/config");
+    const config = await configResponse.json().catch(() => null);
+    if (!configResponse.ok || !config?.publishable_key) throw new Error("Clerk is not configured for this app.");
+    // This app has no JavaScript build step, so use Clerk's matching hosted UI
+    // and runtime bundles instead of mixing an ESM runtime with a CDN UI bundle.
+    const clerkDomain = atob(config.publishable_key.split("_")[2]).slice(0, -1);
+    const loadScript = (src, attributes = {}) => new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = true;
+      script.crossOrigin = "anonymous";
+      Object.entries(attributes).forEach(([name, value]) => script.setAttribute(name, value));
+      script.onload = resolve;
+      script.onerror = () => reject(new Error("Unable to load Clerk's sign-in service."));
+      document.head.appendChild(script);
+    });
+    await loadScript(`https://${clerkDomain}/npm/@clerk/ui@1/dist/ui.browser.js`);
+    await loadScript(
+      `https://${clerkDomain}/npm/@clerk/clerk-js@6/dist/clerk.browser.js`,
+      { "data-clerk-publishable-key": config.publishable_key },
+    );
+    const clerk = window.Clerk;
+    if (!clerk || !window.__internal_ClerkUICtor) throw new Error("Clerk's sign-in UI did not load.");
+    await clerk.load({ ui: { ClerkUI: window.__internal_ClerkUICtor } });
+    const screen = clerk.isSignedIn ? <App clerk={clerk} /> : <SignIn clerk={clerk} />;
+    createRoot(document.getElementById("root")).render(<ChatErrorBoundary>{screen}</ChatErrorBoundary>);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unable to load sign-in.";
+    createRoot(document.getElementById("root")).render(<BootError message={message} />);
+  }
+}
+
+bootstrap();

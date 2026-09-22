@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from typing import Any
 
-from state import INITIAL_TRIP_PHASE, TripPhase
+from travel_agent.core.state import INITIAL_TRIP_PHASE, TripPhase
 
 
 def _field(value: object, name: str) -> Any:

@@ -1,18 +1,26 @@
-import os
-import json
 import asyncio
+import json
+from datetime import date
+from functools import cache
+from time import perf_counter
+
 from dotenv import load_dotenv
 from langchain.messages import HumanMessage, ToolMessage
-from tavily import TavilyClient
-from langchain.tools import tool, ToolRuntime
+from langchain.tools import ToolRuntime, tool
 from langchain_core.tools import BaseTool
 from langgraph.types import Command
-from functools import cache
-from datetime import date
+from tavily import TavilyClient
 
-from models import Leg, BestOffer
-from flight_options import parse_offers, dedupe, format_options
-from workflow import apply_phase_transition
+from travel_agent.core.models import BestOffer, FlightPipelineMetric, Leg
+from travel_agent.core.workflow import apply_phase_transition
+from travel_agent.flights.duffel import DuffelClient
+from travel_agent.flights.flight_selector import (
+    baggage_requested,
+    enrich_baggage_details,
+    parse_duffel_offers,
+    prepare_candidates,
+    select_best_offer,
+)
 
 load_dotenv()
 
@@ -125,6 +133,8 @@ def _mcp_json(raw) -> dict:
 
 def make_search_leg_tool(flights_tools_by_name: dict[str, BaseTool]) -> BaseTool:
     """Build the search tool the flights subagent gets."""
+    from legacy.flight_options import dedupe, format_options, parse_offers
+
     search_flights = flights_tools_by_name["search_flights"]
 
     @tool
@@ -154,7 +164,8 @@ _MAX_CONCURRENT_SEARCHES = 3   # keeps clear of Duffel rate limits on long itine
 
 async def _search_leg(
     agent, leg: Leg, semaphore: asyncio.Semaphore, preferences: str | None = None
-    ) -> BestOffer | None:
+    ) -> tuple[BestOffer | None, int, int | None, int | None]:
+    started = perf_counter()
     message = (
         f"Find the best one-way flight from {leg.origin} to {leg.destination} "
         f"departing on {leg.departure_date}"
@@ -167,16 +178,31 @@ async def _search_leg(
         )
     async with semaphore:
         result = await agent.ainvoke({"messages": [HumanMessage(content=message)]})
-    return result.get("structured_response")
+    input_tokens = 0
+    output_tokens = 0
+    found_usage = False
+    for message in result.get("messages", []):
+        usage = getattr(message, "usage_metadata", None) or {}
+        if not isinstance(usage, dict):
+            continue
+        found_usage = True
+        input_tokens += int(usage.get("input_tokens") or 0)
+        output_tokens += int(usage.get("output_tokens") or 0)
+    return (
+        result.get("structured_response"),
+        round((perf_counter() - started) * 1000),
+        input_tokens if found_usage else None,
+        output_tokens if found_usage else None,
+    )
 
 
 @tool
-async def call_flights_agent(
+async def call_legacy_flights_agent(
     runtime: ToolRuntime,
     leg_index: int | None = None,
     preferences: str | None = None,
     ) -> Command | str:
-    """Call the flights subagent to find a flight offer for one or more legs.
+    """Legacy benchmark: call the preserved MCP-backed flights subagent.
 
     Pass a leg_index to search (or re-search) just that leg. Omit it to fill in
     every leg that does not have an offer yet. Set the itinerary with
@@ -187,6 +213,9 @@ async def call_flights_agent(
     British Airways", "avoid long layovers". Pass this whenever the user has
     expressed a preference; it is saved and reused for later searches, so you
     only need to pass it again when their preferences change."""
+
+    if runtime.context.pipeline != "legacy":
+        return "Legacy flights subagent is disconnected. Set FLIGHT_PIPELINE=legacy to run it."
 
     legs = list(runtime.state.get("legs") or [])
     if not legs:
@@ -247,11 +276,27 @@ async def call_flights_agent(
     )
 
     notes = []
-    for i, pick in zip(targets, results):   # gather preserves input order
+    metrics = list(runtime.state.get("flight_pipeline_metrics") or [])
+    for i, result in zip(targets, results):   # gather preserves input order
         leg = legs[i]
-        if isinstance(pick, Exception):
-            notes.append(f"[{i}] {leg.origin} -> {leg.destination}: search failed ({pick}).")
-        elif pick is None:
+        if isinstance(result, Exception):
+            notes.append(f"[{i}] {leg.origin} -> {leg.destination}: search failed ({result}).")
+            metrics.append(FlightPipelineMetric(
+                pipeline="legacy", leg_index=i, total_ms=0, error=str(result)
+            ))
+            continue
+        pick, elapsed_ms, input_tokens, output_tokens = result
+        metrics.append(FlightPipelineMetric(
+            pipeline="legacy",
+            leg_index=i,
+            total_ms=elapsed_ms,
+            selected_offer_id=pick.offer_id if pick else None,
+            model="openai:gpt-5-mini",
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            error=None if pick else "Subagent finished without selecting an offer.",
+        ))
+        if pick is None:
             notes.append(f"[{i}] {leg.origin} -> {leg.destination}: subagent finished without selecting an offer.")
         else:
             legs[i] = leg.model_copy(update={"offer": pick})
@@ -264,11 +309,173 @@ async def call_flights_agent(
 
     updates = {
         "legs": legs,
+        "flight_pipeline_metrics": metrics[-100:],
         "messages": [ToolMessage(summary, tool_call_id=runtime.tool_call_id)],
         }
     if preferences:
         updates["flight_preferences"] = preferences
 
+    return Command(update=apply_phase_transition(runtime.state, updates))
+
+
+async def _search_and_select_direct_leg(
+    *,
+    client: DuffelClient,
+    classifier,
+    leg: Leg,
+    leg_index: int,
+    travelers: int,
+    preferences: str | None,
+    semaphore: asyncio.Semaphore,
+) -> tuple[BestOffer | None, FlightPipelineMetric]:
+    """Search one leg, then make a constrained Jev choice from its viable offers."""
+    started = perf_counter()
+    duffel_ms: int | None = None
+    selection_ms: int | None = None
+    candidates = 0
+    try:
+        duffel_started = perf_counter()
+        async with semaphore:
+            request = await client.search_one_way(
+                origin=leg.origin,
+                destination=leg.destination,
+                departure_date=leg.departure_date or "",
+                travelers=travelers,
+            )
+        duffel_ms = round((perf_counter() - duffel_started) * 1000)
+        options = prepare_candidates(parse_duffel_offers(request))
+        if baggage_requested(preferences):
+            options = await enrich_baggage_details(client, options)
+        candidates = len(options)
+        if not options:
+            raise ValueError("Duffel returned no viable flight offers.")
+
+        selection_started = perf_counter()
+        offer, confidence, input_tokens, output_tokens, model = await select_best_offer(
+            classifier,
+            origin=leg.origin,
+            destination=leg.destination,
+            departure_date=leg.departure_date or "",
+            preferences=preferences,
+            candidates=options,
+        )
+        selection_ms = round((perf_counter() - selection_started) * 1000)
+        return offer, FlightPipelineMetric(
+            pipeline="jev",
+            leg_index=leg_index,
+            duffel_ms=duffel_ms,
+            selection_ms=selection_ms,
+            total_ms=round((perf_counter() - started) * 1000),
+            candidates=candidates,
+            selected_offer_id=offer.offer_id,
+            selection_confidence=confidence,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            model=model,
+        )
+    except Exception as exc:  # Preserve partial success for the other legs.
+        return None, FlightPipelineMetric(
+            pipeline="jev",
+            leg_index=leg_index,
+            duffel_ms=duffel_ms,
+            selection_ms=selection_ms,
+            total_ms=round((perf_counter() - started) * 1000),
+            candidates=candidates,
+            error=str(exc),
+        )
+
+
+@tool
+async def search_and_select_flights(
+    runtime: ToolRuntime,
+    leg_index: int | None = None,
+    preferences: str | None = None,
+) -> Command | str:
+    """Search direct Duffel offers and select one per leg with Jev.
+
+    Omit leg_index to fill every itinerary leg without an offer. Preferences are saved
+    and reused; a new preference re-searches every leg because the old picks may no
+    longer match the traveller's criteria.
+    """
+    if runtime.context.pipeline != "jev":
+        return "Jev flight selection is disconnected. Set FLIGHT_PIPELINE=jev to run it."
+    client = runtime.context.duffel_client
+    classifier = runtime.context.classifier
+    if not isinstance(client, DuffelClient) or classifier is None:
+        return "Direct Duffel/Jev flight services are not configured."
+
+    legs = list(runtime.state.get("legs") or [])
+    if not legs:
+        return "Cannot search flights; no itinerary saved. Call set_trip_legs first."
+    travelers = runtime.state.get("travelers")
+    if not isinstance(travelers, int) or travelers < 1:
+        return "Cannot search flights until the traveller count is saved."
+
+    saved_preferences = runtime.state.get("flight_preferences")
+    preferences_changed = preferences is not None and preferences != saved_preferences
+    preferences = preferences or saved_preferences
+    if leg_index is None:
+        targets = list(range(len(legs))) if preferences_changed else [
+            index for index, leg in enumerate(legs) if leg.offer is None
+        ]
+        if not targets:
+            return f"Every leg already has an offer:\n{_describe_legs(legs)}"
+    elif 0 <= leg_index < len(legs):
+        targets = [leg_index]
+    else:
+        return f"No leg at index {leg_index}; the itinerary has {len(legs)} leg(s)."
+
+    today = date.today()
+    invalid = []
+    for index in targets:
+        leg = legs[index]
+        try:
+            when = date.fromisoformat(leg.departure_date or "")
+        except ValueError:
+            invalid.append(f"[{index}] {leg.origin} -> {leg.destination}: departure date must be YYYY-MM-DD.")
+            continue
+        if when <= today:
+            invalid.append(f"[{index}] departure date must be after {today.isoformat()}.")
+    if invalid:
+        return "Cannot search flights; fix these legs with set_trip_legs first:\n" + "\n".join(invalid)
+
+    semaphore = asyncio.Semaphore(_MAX_CONCURRENT_SEARCHES)
+    results = await asyncio.gather(
+        *(
+            _search_and_select_direct_leg(
+                client=client,
+                classifier=classifier,
+                leg=legs[index],
+                leg_index=index,
+                travelers=travelers,
+                preferences=preferences,
+                semaphore=semaphore,
+            )
+            for index in targets
+        )
+    )
+    notes = []
+    metrics = list(runtime.state.get("flight_pipeline_metrics") or [])
+    for index, (offer, metric) in zip(targets, results):
+        metrics.append(metric)
+        if offer is None:
+            notes.append(f"[{index}] {legs[index].origin} -> {legs[index].destination}: {metric.error}")
+        else:
+            legs[index] = legs[index].model_copy(update={"offer": offer})
+
+    updates = {
+        "legs": legs,
+        # Keep the newest measurements while preventing unbounded checkpoint growth.
+        "flight_pipeline_metrics": metrics[-100:],
+        "messages": [ToolMessage(f"Itinerary:\n{_describe_legs(legs)}", tool_call_id=runtime.tool_call_id)],
+    }
+    if preferences:
+        updates["flight_preferences"] = preferences
+    if notes:
+        updates["messages"] = [ToolMessage(
+            f"Itinerary:\n{_describe_legs(legs)}\n\nProblems:\n" + "\n".join(notes),
+            tool_call_id=runtime.tool_call_id,
+        )]
     return Command(update=apply_phase_transition(runtime.state, updates))
 
 
@@ -336,8 +543,17 @@ async def get_saved_flights_info(runtime: ToolRuntime, leg_index: int | None = N
         header = f"[{i}] {leg.origin} -> {leg.destination} on {leg.departure_date}"
 
         try:
-            details = await runtime.context.flights_tools_by_name["get_offer_details"].ainvoke(
-                {"params": {"offer_id": offer_id}}
+            if runtime.context.pipeline == "jev":
+                client = runtime.context.duffel_client
+                if not isinstance(client, DuffelClient):
+                    raise RuntimeError("Direct Duffel client is not configured.")
+                details = json.dumps(await client.get_offer(offer_id), indent=2)
+            else:
+                tools_by_name = runtime.context.flights_tools_by_name
+                if tools_by_name is None:
+                    raise RuntimeError("Legacy flights tools are not configured.")
+                details = await tools_by_name["get_offer_details"].ainvoke(
+                    {"params": {"offer_id": offer_id}}
                 )
         except Exception as e:
             details = (

@@ -3,7 +3,9 @@ from typing import Annotated
 
 from langchain.agents import AgentState
 from pydantic import Field
-from models import Leg
+
+from travel_agent.core.models import FlightPipelineMetric, HotelOption, Leg
+
 
 class TripPhase(StrEnum):
     """The deterministic stages of the trip-planning workflow."""
@@ -37,6 +39,18 @@ class TripState(AgentState):
             description="Complete ordered itinerary of one-way legs, including a return leg home when applicable.",
         ),
     ]
+    hotels: Annotated[
+        dict[str, list[HotelOption]],
+        Field(
+            default_factory=dict,
+            description=(
+                "Bookable hotel options grouped by a stable itinerary-leg key in the "
+                "form 'ORIGIN:DESTINATION:DEPARTURE_DATE', for example "
+                "'LHR:CDG:2026-05-14'. Each option is a distinct room/rate, even "
+                "when multiple options belong to the same hotel."
+            ),
+        ),
+    ]
     departure_date: Annotated[
         str | None,
         Field(description="Overall outbound date in YYYY-MM-DD format, if known."),
@@ -64,6 +78,13 @@ class TripState(AgentState):
     flight_preferences: Annotated[
         str | None,
         Field(description="Flight-selection constraints in the traveller's own words."),
+    ]
+    flight_pipeline_metrics: Annotated[
+        list[FlightPipelineMetric],
+        Field(
+            default_factory=list,
+            description="Recent per-leg timings and token usage for the active flight-selection pipeline.",
+        ),
     ]
     flights_confirmed: Annotated[
         bool,

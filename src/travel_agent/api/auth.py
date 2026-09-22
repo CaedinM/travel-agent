@@ -8,7 +8,6 @@ from clerk_backend_api.security.types import RequestState
 from fastapi import Depends, HTTPException, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-
 http_bearer = HTTPBearer(auto_error=False)
 
 

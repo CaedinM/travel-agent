@@ -1,0 +1,174 @@
+{
+  "results": [
+    {
+      "id": 1,
+      "jev": {
+        "end_to_end_ms": 2575,
+        "input_tokens": 14402,
+        "output_tokens": 960,
+        "total_token_cost_usd": 0.00060488,
+        "error": null
+      },
+      "legacy": {
+        "end_to_end_ms": 12987,
+        "input_tokens": 2799,
+        "output_tokens": 728,
+        "total_token_cost_usd": 0.00215575,
+        "error": null
+      }
+    },
+    {
+      "id": 2,
+      "jev": {
+        "end_to_end_ms": 1692,
+        "input_tokens": 7262,
+        "output_tokens": 504,
+        "total_token_cost_usd": 0.000305,
+        "error": null
+      },
+      "legacy": {
+        "end_to_end_ms": 11408,
+        "input_tokens": 2773,
+        "output_tokens": 847,
+        "total_token_cost_usd": 0.00238725,
+        "error": null
+      }
+    },
+    {
+      "id": 3,
+      "jev": {
+        "end_to_end_ms": 2168,
+        "input_tokens": 14738,
+        "output_tokens": 1003,
+        "total_token_cost_usd": 0.000619,
+        "error": null
+      },
+      "legacy": {
+        "end_to_end_ms": 12883,
+        "input_tokens": 3474,
+        "output_tokens": 1043,
+        "total_token_cost_usd": 0.0029545,
+        "error": null
+      }
+    },
+    {
+      "id": 4,
+      "jev": {
+        "end_to_end_ms": 1372,
+        "input_tokens": 4097,
+        "output_tokens": 298,
+        "total_token_cost_usd": 0.00017207,
+        "error": null
+      },
+      "legacy": {
+        "end_to_end_ms": 24526,
+        "input_tokens": 2588,
+        "output_tokens": 2194,
+        "total_token_cost_usd": 0.005035,
+        "error": null
+      }
+    },
+    {
+      "id": 5,
+      "jev": {
+        "end_to_end_ms": 2447,
+        "input_tokens": 10884,
+        "output_tokens": 759,
+        "total_token_cost_usd": 0.00045713,
+        "error": null
+      },
+      "legacy": {
+        "end_to_end_ms": 16631,
+        "input_tokens": 2828,
+        "output_tokens": 1605,
+        "total_token_cost_usd": 0.003917,
+        "error": null
+      }
+    },
+    {
+      "id": 6,
+      "jev": {
+        "end_to_end_ms": 2005,
+        "input_tokens": 13760,
+        "output_tokens": 924,
+        "total_token_cost_usd": 0.00057792,
+        "error": null
+      },
+      "legacy": {
+        "end_to_end_ms": 15430,
+        "input_tokens": 3100,
+        "output_tokens": 1030,
+        "total_token_cost_usd": 0.002835,
+        "error": null
+      }
+    },
+    {
+      "id": 7,
+      "jev": {
+        "end_to_end_ms": 1379,
+        "input_tokens": 778,
+        "output_tokens": 59,
+        "total_token_cost_usd": 3.268e-05,
+        "error": null
+      },
+      "legacy": {
+        "end_to_end_ms": 10573,
+        "input_tokens": 1776,
+        "output_tokens": 709,
+        "total_token_cost_usd": 0.001862,
+        "error": null
+      }
+    },
+    {
+      "id": 8,
+      "jev": {
+        "end_to_end_ms": 1665,
+        "input_tokens": 2225,
+        "output_tokens": 153,
+        "total_token_cost_usd": 9.345e-05,
+        "error": null
+      },
+      "legacy": {
+        "end_to_end_ms": 13158,
+        "input_tokens": 1985,
+        "output_tokens": 1147,
+        "total_token_cost_usd": 0.00279025,
+        "error": null
+      }
+    },
+    {
+      "id": 9,
+      "jev": {
+        "end_to_end_ms": 2360,
+        "input_tokens": 14782,
+        "output_tokens": 1020,
+        "total_token_cost_usd": 0.00062084,
+        "error": null
+      },
+      "legacy": {
+        "end_to_end_ms": 9898,
+        "input_tokens": 3404,
+        "output_tokens": 637,
+        "total_token_cost_usd": 0.002125,
+        "error": null
+      }
+    },
+    {
+      "id": 10,
+      "jev": {
+        "end_to_end_ms": 5622,
+        "input_tokens": 2236,
+        "output_tokens": 155,
+        "total_token_cost_usd": 9.391e-05,
+        "error": null
+      },
+      "legacy": {
+        "end_to_end_ms": 21599,
+        "input_tokens": 2009,
+        "output_tokens": 1431,
+        "total_token_cost_usd": 0.00336425,
+        "error": null
+      }
+    }
+  ]
+}

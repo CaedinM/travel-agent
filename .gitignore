@@ -4,8 +4,10 @@
 
 .ipynb_checkpoints/
 
-*/__pycache__
+**/__pycache__/
 
 AGENTS.md
 
 agent_notebook.ipynb
+
+.langgraph_api/

@@ -8,8 +8,8 @@ from langchain.agents.middleware import (
 from langchain.agents.structured_output import ToolStrategy
 from langchain_core.tools import BaseTool
 
-from llm import LLM
-from models import BestOffer
+from travel_agent.core.llm import LLM
+from travel_agent.core.models import BestOffer
 
 
 def build_flights_agent(search_leg: BaseTool, get_offer_details: BaseTool):

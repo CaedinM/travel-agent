@@ -1,0 +1,14 @@
+{
+  "test_states": [
+    {"id": 1, "prompt": "Find the best flight for the traveller's stated preferences.", "state": {"legs": [{"origin": "LHR", "destination": "CDG", "departure_date": "2026-10-15"}], "travelers": 1, "flight_preferences": "Prefer the lowest fare, but avoid an early-morning departure or a connection for a tiny saving."}},
+    {"id": 2, "prompt": "Find a good-value flight.", "state": {"legs": [{"origin": "JFK", "destination": "LAX", "departure_date": "2026-11-05"}], "travelers": 1, "flight_preferences": "Something convenient and reasonably priced."}},
+    {"id": 3, "prompt": "Choose the flight that makes the most sense.", "state": {"legs": [{"origin": "SFO", "destination": "SEA", "departure_date": "2026-10-29"}], "travelers": 2, "flight_preferences": "No strong preference, just a sensible option."}},
+    {"id": 4, "prompt": "Search using the requirements exactly.", "state": {"legs": [{"origin": "LAX", "destination": "JFK", "departure_date": "2026-12-03"}], "travelers": 1, "flight_preferences": "Nonstop only. Do not leave before 09:00. I would rather pay up to $150 more to avoid a connection."}},
+    {"id": 5, "prompt": "Recommend the best available flight.", "state": {"legs": [{"origin": "CDG", "destination": "FCO", "departure_date": "2027-01-14"}], "travelers": 1, "flight_preferences": "Avoid departures before 08:00 and arrivals after 22:00; one connection is acceptable if it saves a lot."}},
+    {"id": 6, "prompt": "Find the best flight for this trip.", "state": {"legs": [{"origin": "NRT", "destination": "ICN", "departure_date": "2026-11-18"}], "travelers": 1, "flight_preferences": "Prefer a morning departure and a direct flight, but do not pay much extra for it."}},
+    {"id": 7, "prompt": "Find the cheapest practical flight.", "state": {"legs": [{"origin": "SYD", "destination": "MEL", "departure_date": "2026-12-10"}], "travelers": 3, "flight_preferences": "Cheapest is the main priority."}},
+    {"id": 8, "prompt": "Use the traveller's preferences to pick one offer.", "state": {"legs": [{"origin": "BOS", "destination": "MIA", "departure_date": "2027-02-12"}], "travelers": 1, "flight_preferences": "Direct flights only, but choose the absolute cheapest option even if it has two stops."}},
+    {"id": 9, "prompt": "Find the best balance for this flight.", "state": {"legs": [{"origin": "AMS", "destination": "BCN", "departure_date": "2026-10-22"}], "travelers": 2, "flight_preferences": "Ideally not too early and preferably direct, but I need the lowest cost possible."}},
+    {"id": 10, "prompt": "Select the offer that best follows the stated criteria.", "state": {"legs": [{"origin": "ORD", "destination": "DEN", "departure_date": "2027-03-06"}], "travelers": 1, "flight_preferences": "Avoid red-eyes and do not depart before 07:00, but I want to arrive before 09:00 and spend as little as possible."}}
+  ]
+}

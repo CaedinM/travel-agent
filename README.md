@@ -1,31 +1,42 @@
 # Travel Agentic
+Chat with an AI agent to plan and book your next trip.
 
-Plan and book your next trip by simply chatting with an agent.
+## Features:
+- Converse with the agent to plan a trip.
+- 
+- Chat interface also displays trip details as they are mentioned.
+
+## The Agent:
+- Uses dynamic prompts to correctly guide users through trip planning.
+- Avoids mistakes and hallucinations by saving important details in state rather than relying on message history for context.
+- Integrates with duffel API to find flights for the user based on their preferences (specific airline, time of day, cabin, etc.)
+- Utilizes Jev to optimize latency and token usage for decision making such as choosing a flight offer.
 
 ## Stack
 
 - Frontend: React 18.3.1
 - Backend: FastAPI, LangChain/LangGraph, Uvicorn
-- Models: OpenAI (`gpt-5` / `gpt-5-mini`)
-- Flight Search: Duffel via the `flights-mcp` MCP server
+- Models: OpenAI (`gpt-5` / `gpt-5-mini`), TypeSafe (`jev-1.13.0`)
+- Flights: Duffel.com API
 - Web Search: Tavily
-- Caching: Redis
 - Auth: Clerk
+- Rate Limiting: Redis
 - Observability: LangSmith (optional)
 
 ## Project layout
 
 | Path | Purpose |
 |---|---|
-| `src/api.py` | FastAPI server and chat/progress endpoints |
-| `src/agents/` | Planning orchestrator and specialized travel agents |
-| `src/tools.py` | Agent tools and flight-search integration |
-| `src/models.py`, `src/state.py` | Itinerary, offers, and conversation state |
-| `src/resources.py`, `src/mcp_client.py` | MCP session and agent resources |
+| `src/travel_agent/api/` | FastAPI server, authentication, and HTTP contracts |
+| `src/travel_agent/agents/` | Planning orchestrator and specialized travel agents |
+| `src/travel_agent/tools/` | Agent tools and flight-search workflows |
+| `src/travel_agent/core/` | Itinerary models, conversation state, workflow, and LLM configuration |
+| `src/travel_agent/flights/` | Duffel client plus flight parsing and selection |
+| `src/travel_agent/infrastructure/` | MCP session and runtime resource wiring |
 | `frontend/` | Browser chat interface and styles |
 
 
-## Setup
+## Developer Setup
 
 Requires Python 3.12.
 
@@ -53,11 +64,12 @@ cp .env.example .env
 | `TAVILY_API_KEY` | Required for destination research. |
 | `DUFFEL_TEST_API_KEY` | Required for flight search using Duffel test data. |
 | `DUFFEL_LIVE_API_KEY` | Required only when `LIVE_MODE=true`. |
+| `TYPESAFE_API_KEY` | Required for Jev flight selection (the default flight pipeline). |
+| `FLIGHT_PIPELINE` | Optional: `jev` (default) or `legacy` to benchmark the preserved MCP/subagent path. |
 | `LANGSMITH_*` | Optional tracing configuration. Set `LANGSMITH_TRACING=false` to disable tracing. |
 | `REDIS_URL` | Required for chat rate limiting. Use `redis://localhost:6379/0` with the local Redis setup below. |
 
-
-### Local Development
+## Running Locally
 The API connects to Redis for chat rate limiting, but does not start Redis itself.
 Run Redis separately before starting the app. With Docker Desktop installed and
 running, create the local Redis container once:
@@ -84,5 +96,24 @@ If you use a different host port, update `REDIS_URL` to match it.
 Start the app:
 
 ```bash
-uvicorn api:app --app-dir src --reload
+uvicorn travel_agent.api.app:app --app-dir src --reload
 ```
+
+## Jev 
+### Flight pipeline benchmarking
+Travel Agentic uses the Jev Classifier model for selecting flights based on
+ambiguous user preferences. The depreciated system used a subagent and an MCP tool
+to find flights. The new system uses a deterministic call to the Duffel.com API,
+drops disqualified candidates and then serves the rest to Jev along with the user's
+preferences to choose the "best" option.
+
+To observe the latency and token cost gains, I ran both systems against a test set
+of 10 mock TripStates. Experiment can be found in `experiments/flights_evaluation/`
+The results:
+
+| System | Average end-to-end time per request | Total estimated token cost |
+|---|---|---|
+| Deterministic Duffel search + Jev Classifier | ~2.33s | $0.00358 |
+| GPT-5-mini + flights-mcp | ~14.91s | $0.02943 |
+
+**Jev is roughly 6.4× faster and 8.2× cheaper**

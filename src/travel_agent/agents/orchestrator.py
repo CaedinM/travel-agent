@@ -1,5 +1,6 @@
 """Top-level trip-planning orchestrator."""
 
+import os
 from datetime import date
 
 from dotenv import load_dotenv
@@ -8,13 +9,20 @@ from langchain.agents.middleware import dynamic_prompt
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
-from llm import POWERFUL_LLM
-from models import BestOffer, HotelOption, Leg, Resources
-from state import INITIAL_TRIP_PHASE, TripPhase, TripState
-from tools import (
-    call_flights_agent,
+from travel_agent.core.llm import POWERFUL_LLM
+from travel_agent.core.models import (
+    BestOffer,
+    FlightPipelineMetric,
+    HotelOption,
+    Leg,
+    Resources,
+)
+from travel_agent.core.state import INITIAL_TRIP_PHASE, TripPhase, TripState
+from travel_agent.tools.trip import (
+    call_legacy_flights_agent,
     confirm_flights,
     get_saved_flights_info,
+    search_and_select_flights,
     set_trip_legs,
     update_trip_info,
     web_search,
@@ -79,7 +87,7 @@ The itinerary is set. First ask for flight preferences if they are unknown, such
 nonstop-only, departure-time limits, airline, cabin, or layover tolerance. Do not force
 preferences the traveller does not have.
 
-When the traveller is ready to search, call `call_flights_agent` once with no
+When the traveller is ready to search, call `search_and_select_flights` once with no
 `leg_index`; it searches all legs without offers in parallel. Pass the traveller's
 stated preferences in their own words. Do not search one leg at a time unless the user
 asks to change or re-search that specific leg. Do not re-run a completed search merely
@@ -111,16 +119,27 @@ def orchestrator_dynamic_prompt(request) -> str:
     except (TypeError, ValueError):
         phase = INITIAL_TRIP_PHASE
 
-    return f"{ORCHESTRATOR_SYSTEM_PROMPT}\n\n{PHASE_PROMPTS[phase]}"
+    flight_tool = (
+        "call_legacy_flights_agent"
+        if os.environ.get("FLIGHT_PIPELINE", "jev").strip().lower() == "legacy"
+        else "search_and_select_flights"
+    )
+    phase_prompt = PHASE_PROMPTS[phase].replace("search_and_select_flights", flight_tool)
+    return f"{ORCHESTRATOR_SYSTEM_PROMPT}\n\n{phase_prompt}"
 
 
 def build_orchestrator_agent():
     """Build the top-level agent that coordinates the trip workflow."""
+    flight_search_tool = (
+        call_legacy_flights_agent
+        if os.environ.get("FLIGHT_PIPELINE", "jev").strip().lower() == "legacy"
+        else search_and_select_flights
+    )
     tools = [
         web_search,
         update_trip_info,
         set_trip_legs,
-        call_flights_agent,
+        flight_search_tool,
         get_saved_flights_info,
         confirm_flights,
     ]
@@ -134,7 +153,7 @@ def build_orchestrator_agent():
         # relying on the permissive default, which now warns and will later block.
         checkpointer=InMemorySaver(
             serde=JsonPlusSerializer(
-                allowed_msgpack_modules=[Leg, BestOffer, HotelOption]
+                allowed_msgpack_modules=[Leg, BestOffer, HotelOption, FlightPipelineMetric]
             )
         ),
         state_schema=TripState,

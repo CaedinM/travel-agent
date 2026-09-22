@@ -1,9 +1,12 @@
-from resources import open_resources
-from agents import build_orchestrator_agent
-from state import INITIAL_TRIP_PHASE
-from langchain.messages import HumanMessage
 import asyncio
 import uuid
+
+from langchain.messages import HumanMessage
+
+from travel_agent.agents.orchestrator import build_orchestrator_agent
+from travel_agent.core.state import INITIAL_TRIP_PHASE
+from travel_agent.infrastructure.resources import open_resources
+
 
 async def main():
     async with open_resources() as res:

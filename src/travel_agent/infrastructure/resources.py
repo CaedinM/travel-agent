@@ -5,6 +5,7 @@ from langchain_typesafe import TypeSafeClassifier
 
 from travel_agent.core.models import Resources
 from travel_agent.flights.duffel import DuffelClient
+from travel_agent.flights.prefetch import FlightPrefetchCache
 
 
 @asynccontextmanager
@@ -39,11 +40,14 @@ async def open_resources():
 
     duffel_client = DuffelClient.from_environment()
     classifier = TypeSafeClassifier(model="jev-1.13.0")
+    flight_prefetch = FlightPrefetchCache()
     try:
         yield Resources(
-            pipeline="jev", duffel_client=duffel_client, classifier=classifier
+            pipeline="jev", duffel_client=duffel_client, classifier=classifier,
+            flight_prefetch=flight_prefetch,
         )
     finally:
+        flight_prefetch.close()
         await duffel_client.aclose()
         if classifier.async_client is not None:
             await classifier.async_client.aclose()

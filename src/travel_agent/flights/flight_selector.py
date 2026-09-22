@@ -160,6 +160,65 @@ def prepare_candidates(options: list[FlightOption], *, limit: int = 40) -> list[
     )[:limit]
 
 
+def prepare_baggage_candidates(
+    options: list[FlightOption], *, limit: int = 12
+) -> list[FlightOption]:
+    """Keep a compact but meaningful set before paid baggage lookups.
+
+    An option is discarded only when another is no more expensive, no longer, and
+    has no more stops. From the remaining Pareto frontier, retain the extreme
+    choices and fill the rest by departure-time diversity. This avoids making a
+    detailed Duffel call for every search result while preserving real tradeoffs.
+    """
+    if len(options) <= limit:
+        return options
+
+    frontier = [
+        option
+        for option in options
+        if not any(
+            other is not option
+            and other.price <= option.price
+            and other.duration_minutes <= option.duration_minutes
+            and other.stops <= option.stops
+            and (
+                other.price < option.price
+                or other.duration_minutes < option.duration_minutes
+                or other.stops < option.stops
+            )
+            for other in options
+        )
+    ]
+    pool = frontier or options
+    ranked = sorted(pool, key=lambda item: (item.price, item.duration_minutes, item.stops))
+    if len(ranked) <= limit:
+        return ranked
+
+    selected: list[FlightOption] = []
+    for extreme in (
+        min(ranked, key=lambda item: item.price),
+        min(ranked, key=lambda item: item.duration_minutes),
+        min(ranked, key=lambda item: item.stops),
+    ):
+        if extreme not in selected:
+            selected.append(extreme)
+
+    # Time-of-day can be a user preference, so select evenly across departure order
+    # instead of allowing the cheapest end of the frontier to crowd it out.
+    by_departure = sorted(ranked, key=lambda item: item.departure)
+    slots = limit - len(selected)
+    for index in range(slots):
+        candidate = by_departure[round(index * (len(by_departure) - 1) / max(slots - 1, 1))]
+        if candidate not in selected:
+            selected.append(candidate)
+    for candidate in ranked:
+        if len(selected) == limit:
+            break
+        if candidate not in selected:
+            selected.append(candidate)
+    return sorted(selected, key=lambda item: (item.price, item.duration_minutes, item.stops))
+
+
 def baggage_requested(preferences: str | None) -> bool:
     """Use a cheap, explicit gate before making per-offer ancillary requests."""
     return bool(re.search(r"\b(bag|bags|baggage|checked|luggage|suitcase)\b", preferences or "", re.I))
@@ -242,6 +301,13 @@ async def select_best_offer(
             currency=option.currency,
             offer_request_id=option.offer_request_id or None,
             expires_at=option.expires_at,
+            departure=option.departure or None,
+            arrival=option.arrival or None,
+            duration_minutes=option.duration_minutes if option.duration_minutes < 10**6 else None,
+            stops=option.stops,
+            carriers=list(option.carriers),
+            included_checked_baggage=option.included_checked_baggage,
+            additional_checked_baggage=list(option.additional_checked_baggage),
             reasoning=(
                 f"Selected by Jev from {len(candidates)} viable options "
                 f"with {answer.confidence:.0%} decision confidence."

@@ -9,7 +9,7 @@ from langchain.agents.middleware import dynamic_prompt
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 
-from travel_agent.core.llm import POWERFUL_LLM
+from travel_agent.core.llm import LLM
 from travel_agent.core.models import (
     BestOffer,
     FlightPipelineMetric,
@@ -20,9 +20,9 @@ from travel_agent.core.models import (
 from travel_agent.core.state import INITIAL_TRIP_PHASE, TripPhase, TripState
 from travel_agent.tools.trip import (
     call_legacy_flights_agent,
+    choose_prefetched_flights,
     confirm_flights,
     get_saved_flights_info,
-    search_and_select_flights,
     set_trip_legs,
     update_trip_info,
     web_search,
@@ -84,14 +84,13 @@ ask for flight preferences yet.
     TripPhase.FLIGHTS: """
 ## Current phase: flights
 The itinerary is set. First ask for flight preferences if they are unknown, such as
-nonstop-only, departure-time limits, airline, cabin, or layover tolerance. Do not force
-preferences the traveller does not have.
+nonstop-only, departure/arrival-time limits, airline, or layover tolerance. Do not force
+preferences the traveller does not have. 
 
-When the traveller is ready to search, call `search_and_select_flights` once with no
-`leg_index`; it searches all legs without offers in parallel. Pass the traveller's
-stated preferences in their own words. Do not search one leg at a time unless the user
-asks to change or re-search that specific leg. Do not re-run a completed search merely
-to check what is saved.
+Once the traveller's preferences are clear, call `choose_prefetched_flights` once to get
+the best flight offer. Pass a concise normalized summary, for example "economy; nonstop 
+only; one checked bag; no airline preference".
+Do not search one leg at a time unless the user asks to change or re-search that specific leg.
 
 Use the returned itinerary as the current offer record. Explain the recommendations and
 tradeoffs concisely. Use `get_saved_flights_info` for questions about saved offer details.
@@ -122,9 +121,9 @@ def orchestrator_dynamic_prompt(request) -> str:
     flight_tool = (
         "call_legacy_flights_agent"
         if os.environ.get("FLIGHT_PIPELINE", "jev").strip().lower() == "legacy"
-        else "search_and_select_flights"
+        else "choose_prefetched_flights"
     )
-    phase_prompt = PHASE_PROMPTS[phase].replace("search_and_select_flights", flight_tool)
+    phase_prompt = PHASE_PROMPTS[phase].replace("choose_prefetched_flights", flight_tool)
     return f"{ORCHESTRATOR_SYSTEM_PROMPT}\n\n{phase_prompt}"
 
 
@@ -133,7 +132,7 @@ def build_orchestrator_agent():
     flight_search_tool = (
         call_legacy_flights_agent
         if os.environ.get("FLIGHT_PIPELINE", "jev").strip().lower() == "legacy"
-        else search_and_select_flights
+        else choose_prefetched_flights
     )
     tools = [
         web_search,
@@ -145,7 +144,7 @@ def build_orchestrator_agent():
     ]
 
     return create_agent(
-        model=POWERFUL_LLM,
+        model=LLM,
         tools=tools,
         system_prompt=ORCHESTRATOR_SYSTEM_PROMPT,
         # TripState nests our own pydantic models, which the checkpoint serializer

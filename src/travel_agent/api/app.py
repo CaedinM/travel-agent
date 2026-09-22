@@ -14,9 +14,11 @@ from pydantic import BaseModel, Field
 
 from travel_agent.agents.orchestrator import build_orchestrator_agent
 from travel_agent.api.auth import current_user_id
-from travel_agent.core.models import FlightPipelineMetric
+from travel_agent.core.models import BestOffer, FlightPipelineMetric
 from travel_agent.core.state import INITIAL_TRIP_PHASE, TripPhase
+from travel_agent.flights.duffel import DuffelClient
 from travel_agent.infrastructure.resources import open_resources
+from travel_agent.tools.trip import select_from_prefetched_requests
 
 load_dotenv()
 redis_url = os.environ["REDIS_URL"]
@@ -34,6 +36,12 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
     thread_id: str
+
+
+class FlightSelectionRequest(BaseModel):
+    """Preferences submitted after the flight-search prefetch has begun."""
+
+    preferences: str = Field(min_length=1, max_length=2_000)
 
 
 class ClerkConfigResponse(BaseModel):
@@ -55,6 +63,27 @@ class TripProgressResponse(BaseModel):
     travelers: int | None = None
     flights_ready: bool = False
     accommodations_ready: bool = False
+    direct_flight_search: bool = False
+    flight_offers: list["FlightOfferCardResponse"] = Field(default_factory=list)
+
+
+class FlightOfferCardResponse(BaseModel):
+    """The selected offer facts needed by the chat's visual flight cards."""
+
+    leg_index: int
+    origin: str
+    destination: str
+    departure_date: str | None = None
+    offer_id: str
+    price: str
+    currency: str
+    departure: str | None = None
+    arrival: str | None = None
+    duration_minutes: int | None = None
+    stops: int | None = None
+    carriers: list[str] = Field(default_factory=list)
+    included_checked_baggage: str | None = None
+    additional_checked_baggage: list[str] = Field(default_factory=list)
 
 
 class FlightMetricsResponse(BaseModel):
@@ -78,6 +107,28 @@ def trip_progress(thread_id: str, state: dict) -> TripProgressResponse:
         if (destination := field(leg, "destination")) and destination != origin
     ]
     flights_ready = bool(legs) and all(field(leg, "offer") is not None for leg in legs)
+    offers = []
+    for index, leg in enumerate(legs):
+        raw_offer = field(leg, "offer")
+        if raw_offer is None:
+            continue
+        offer = BestOffer.model_validate(raw_offer)
+        offers.append(FlightOfferCardResponse(
+            leg_index=index,
+            origin=field(leg, "origin") or "",
+            destination=field(leg, "destination") or "",
+            departure_date=field(leg, "departure_date"),
+            offer_id=offer.offer_id,
+            price=offer.price,
+            currency=offer.currency,
+            departure=offer.departure,
+            arrival=offer.arrival,
+            duration_minutes=offer.duration_minutes,
+            stops=offer.stops,
+            carriers=offer.carriers,
+            included_checked_baggage=offer.included_checked_baggage,
+            additional_checked_baggage=offer.additional_checked_baggage,
+        ))
     try:
         phase = TripPhase(state.get("phase", INITIAL_TRIP_PHASE))
     except (TypeError, ValueError):
@@ -93,6 +144,8 @@ def trip_progress(thread_id: str, state: dict) -> TripProgressResponse:
         destinations=destinations,
         travelers=state.get("travelers"),
         flights_ready=flights_ready,
+        direct_flight_search=os.environ.get("FLIGHT_PIPELINE", "jev").strip().lower() == "jev",
+        flight_offers=offers,
     )
 
 
@@ -185,6 +238,71 @@ async def get_flight_metrics(
     )
 
 
+@app.post("/trips/{thread_id}/flights/select", response_model=ChatResponse)
+async def select_flights_from_preferences(
+    thread_id: str,
+    payload: FlightSelectionRequest,
+    request: Request,
+    user_id: str = Depends(current_user_id),
+) -> ChatResponse:
+    """Finish a prefetched flight search without a preliminary chat-model turn."""
+    config = {"configurable": {"thread_id": f"{user_id}:{thread_id}"}}
+    snapshot = await request.app.state.agent.aget_state(config)
+    state = dict(snapshot.values or {})
+    if not state:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    if state.get("phase") != TripPhase.FLIGHTS:
+        raise HTTPException(status_code=409, detail="Flight preferences can only be submitted in the flights phase.")
+    if request.app.state.resources.pipeline != "jev":
+        raise HTTPException(status_code=409, detail="Direct flight selection is disabled for the legacy benchmark pipeline.")
+    legs = list(state.get("legs") or [])
+    travelers = state.get("travelers")
+    client = request.app.state.resources.duffel_client
+    classifier = request.app.state.resources.classifier
+    if not legs or not isinstance(travelers, int) or travelers < 1:
+        raise HTTPException(status_code=409, detail="The itinerary and traveler count must be saved before searching flights.")
+    if not isinstance(client, DuffelClient) or classifier is None:
+        raise HTTPException(status_code=503, detail="Flight-search services are unavailable.")
+
+    cache = request.app.state.resources.flight_prefetch
+    cached = await cache.take(config["configurable"]["thread_id"], legs=legs, travelers=travelers)
+    if cached is None:
+        cache.start(config["configurable"]["thread_id"], client=client, legs=legs, travelers=travelers)
+        cached = await cache.take(config["configurable"]["thread_id"], legs=legs, travelers=travelers)
+    if cached is None:  # Defensive: start always creates an entry for valid uncovered legs.
+        raise HTTPException(status_code=500, detail="Could not start the flight search.")
+
+    preferences = payload.preferences.strip()
+    selected_legs, metrics, notes = await select_from_prefetched_requests(
+        client=client, classifier=classifier, legs=legs, travelers=travelers,
+        preferences=preferences, requests=cached,
+    )
+    await request.app.state.agent.aupdate_state(
+        config,
+        {
+            "legs": selected_legs,
+            "flight_preferences": preferences,
+            "flights_confirmed": False,
+            "flight_pipeline_metrics": [
+                *(state.get("flight_pipeline_metrics") or []), *metrics
+            ][-100:],
+        },
+    )
+    selected_lines = []
+    for index, leg in enumerate(selected_legs):
+        if leg.offer is not None:
+            selected_lines.append(
+                f"[{index}] {leg.origin} → {leg.destination}: "
+                f"{leg.offer.price} {leg.offer.currency} ({leg.offer.offer_id})"
+            )
+    summary = "Selected flights:\n" + "\n".join(selected_lines)
+    if notes:
+        summary += " Some legs could not be selected: " + "; ".join(notes)
+    else:
+        summary += " Review the recommendations and tell me if you want changes or would like to confirm them."
+    return ChatResponse(response=summary, thread_id=thread_id)
+
+
 @app.post("/chat", response_model=ChatResponse, dependencies=[Depends(rate_limit)])
 async def chat(
     payload: ChatRequest,
@@ -212,5 +330,19 @@ async def chat(
     )
     content = result["messages"][-1].content
     response = content if isinstance(content, str) else str(content)
+
+    # As soon as the itinerary reaches flights, begin Duffel work while the user is
+    # reading the prompt for airline/cabin/connection preferences.
+    if result.get("phase") == TripPhase.FLIGHTS:
+        legs = list(result.get("legs") or [])
+        travelers = result.get("travelers")
+        client = request.app.state.resources.duffel_client
+        if isinstance(client, DuffelClient) and isinstance(travelers, int) and travelers > 0:
+            prefetch = request.app.state.resources.flight_prefetch
+            if prefetch is None:
+                return ChatResponse(response=response, thread_id=thread_id)
+            prefetch.start(
+                config["configurable"]["thread_id"], client=client, legs=legs, travelers=travelers
+            )
 
     return ChatResponse(response=response, thread_id=thread_id)

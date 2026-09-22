@@ -15,6 +15,7 @@ class Resources:
     pipeline: str
     duffel_client: object | None = None
     classifier: object | None = None
+    flight_prefetch: object | None = None
     flights_agent: object | None = None
     flights_tools_by_name: dict[str, BaseTool] | None = None
 
@@ -33,6 +34,13 @@ class BestOffer(BaseModel):
         default=None,
         description="Duffel's ISO-8601 offer expiry time, when supplied by the provider.",
     )
+    departure: str | None = Field(default=None, description="Scheduled departure timestamp.")
+    arrival: str | None = Field(default=None, description="Scheduled final-arrival timestamp.")
+    duration_minutes: int | None = Field(default=None, ge=0)
+    stops: int | None = Field(default=None, ge=0)
+    carriers: list[str] = Field(default_factory=list)
+    included_checked_baggage: str | None = None
+    additional_checked_baggage: list[str] = Field(default_factory=list)
 
 
 class FlightPipelineMetric(BaseModel):
@@ -41,6 +49,7 @@ class FlightPipelineMetric(BaseModel):
     pipeline: str
     leg_index: int
     duffel_ms: int | None = None
+    baggage_enrichment_ms: int | None = None
     selection_ms: int | None = None
     total_ms: int
     candidates: int = 0

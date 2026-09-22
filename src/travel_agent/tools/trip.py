@@ -14,10 +14,12 @@ from tavily import TavilyClient
 from travel_agent.core.models import BestOffer, FlightPipelineMetric, Leg
 from travel_agent.core.workflow import apply_phase_transition
 from travel_agent.flights.duffel import DuffelClient
+from travel_agent.flights.prefetch import FlightPrefetchCache
 from travel_agent.flights.flight_selector import (
     baggage_requested,
     enrich_baggage_details,
     parse_duffel_offers,
+    prepare_baggage_candidates,
     prepare_candidates,
     select_best_offer,
 )
@@ -331,6 +333,7 @@ async def _search_and_select_direct_leg(
     """Search one leg, then make a constrained Jev choice from its viable offers."""
     started = perf_counter()
     duffel_ms: int | None = None
+    baggage_enrichment_ms: int | None = None
     selection_ms: int | None = None
     candidates = 0
     try:
@@ -345,7 +348,11 @@ async def _search_and_select_direct_leg(
         duffel_ms = round((perf_counter() - duffel_started) * 1000)
         options = prepare_candidates(parse_duffel_offers(request))
         if baggage_requested(preferences):
-            options = await enrich_baggage_details(client, options)
+            baggage_started = perf_counter()
+            options = await enrich_baggage_details(
+                client, prepare_baggage_candidates(options)
+            )
+            baggage_enrichment_ms = round((perf_counter() - baggage_started) * 1000)
         candidates = len(options)
         if not options:
             raise ValueError("Duffel returned no viable flight offers.")
@@ -364,6 +371,7 @@ async def _search_and_select_direct_leg(
             pipeline="jev",
             leg_index=leg_index,
             duffel_ms=duffel_ms,
+            baggage_enrichment_ms=baggage_enrichment_ms,
             selection_ms=selection_ms,
             total_ms=round((perf_counter() - started) * 1000),
             candidates=candidates,
@@ -378,11 +386,126 @@ async def _search_and_select_direct_leg(
             pipeline="jev",
             leg_index=leg_index,
             duffel_ms=duffel_ms,
+            baggage_enrichment_ms=baggage_enrichment_ms,
             selection_ms=selection_ms,
             total_ms=round((perf_counter() - started) * 1000),
             candidates=candidates,
             error=str(exc),
         )
+
+
+async def select_from_prefetched_requests(
+    *, client: DuffelClient, classifier, legs: list[Leg], travelers: int,
+    preferences: str | None, requests: dict[int, dict | Exception],
+) -> tuple[list[Leg], list[FlightPipelineMetric], list[str]]:
+    """Select from already-started Duffel requests without involving the chat agent."""
+    async def select_one(index: int, leg: Leg):
+        started = perf_counter()
+        request = requests.get(index)
+        if isinstance(request, Exception) or not isinstance(request, dict):
+            return None, FlightPipelineMetric(
+                pipeline="jev", leg_index=index, total_ms=round((perf_counter() - started) * 1000),
+                error=str(request or "No prefetched offers available."),
+            )
+        baggage_ms: int | None = None
+        try:
+            options = prepare_candidates(parse_duffel_offers(request))
+            if baggage_requested(preferences):
+                baggage_started = perf_counter()
+                options = await enrich_baggage_details(client, prepare_baggage_candidates(options))
+                baggage_ms = round((perf_counter() - baggage_started) * 1000)
+            if not options:
+                raise ValueError("Duffel returned no viable flight offers.")
+            selection_started = perf_counter()
+            offer, confidence, input_tokens, output_tokens, model = await select_best_offer(
+                classifier, origin=leg.origin, destination=leg.destination,
+                departure_date=leg.departure_date or "", preferences=preferences, candidates=options,
+            )
+            return offer, FlightPipelineMetric(
+                pipeline="jev", leg_index=index, baggage_enrichment_ms=baggage_ms,
+                selection_ms=round((perf_counter() - selection_started) * 1000),
+                total_ms=round((perf_counter() - started) * 1000), candidates=len(options),
+                selected_offer_id=offer.offer_id, selection_confidence=confidence,
+                input_tokens=input_tokens, output_tokens=output_tokens, model=model,
+            )
+        except Exception as exc:
+            return None, FlightPipelineMetric(
+                pipeline="jev", leg_index=index, baggage_enrichment_ms=baggage_ms,
+                total_ms=round((perf_counter() - started) * 1000), candidates=len(options) if 'options' in locals() else 0,
+                error=str(exc),
+            )
+
+    targets = [(index, leg) for index, leg in enumerate(legs) if leg.offer is None]
+    results = await asyncio.gather(*(select_one(index, leg) for index, leg in targets))
+    updated = list(legs)
+    metrics: list[FlightPipelineMetric] = []
+    notes: list[str] = []
+    for (index, leg), (offer, metric) in zip(targets, results):
+        metrics.append(metric)
+        if offer is None:
+            notes.append(f"[{index}] {leg.origin} -> {leg.destination}: {metric.error}")
+        else:
+            updated[index] = leg.model_copy(update={"offer": offer})
+    return updated, metrics, notes
+
+
+@tool
+async def choose_prefetched_flights(
+    runtime: ToolRuntime, preferences: str | None = None
+) -> Command | str:
+    """Use Jev to choose flights from Duffel options prefetched while preferences were collected.
+
+    Call this only after the traveller's airline, cabin, connection, timing, and
+    baggage preferences are sufficiently clear. Pass a concise, normalized summary
+    of those preferences—not a bare conversational answer such as "yes".
+    """
+    if runtime.context.pipeline != "jev":
+        return "Prefetched Jev selection is disconnected. Set FLIGHT_PIPELINE=jev to run it."
+    client = runtime.context.duffel_client
+    classifier = runtime.context.classifier
+    cache = runtime.context.flight_prefetch
+    legs = list(runtime.state.get("legs") or [])
+    travelers = runtime.state.get("travelers")
+    if not isinstance(client, DuffelClient) or classifier is None or not isinstance(cache, FlightPrefetchCache):
+        return "Direct Duffel/Jev flight services are not configured."
+    if not legs or not isinstance(travelers, int) or travelers < 1:
+        return "Cannot select flights until the itinerary and traveller count are saved."
+
+    saved_preferences = runtime.state.get("flight_preferences")
+    normalized_preferences = preferences or saved_preferences or "No additional preferences stated."
+    key = runtime.config.get("configurable", {}).get("thread_id")
+    if not isinstance(key, str):
+        return "Cannot identify this trip's prefetched flight options."
+    requests = await cache.take(key, legs=legs, travelers=travelers)
+    if requests is None:
+        # A changed preference after a prior selection needs fresh offers for every
+        # leg; the initial background prefetch only covers legs without offers.
+        cache.start(
+            key, client=client, legs=legs, travelers=travelers, include_selected=True
+        )
+        requests = await cache.take(key, legs=legs, travelers=travelers)
+    if requests is None:
+        return "Could not start the flight search. Please try again."
+
+    selected_legs, metrics, notes = await select_from_prefetched_requests(
+        client=client, classifier=classifier, legs=legs, travelers=travelers,
+        preferences=normalized_preferences, requests=requests,
+    )
+    updates = {
+        "legs": selected_legs,
+        "flight_preferences": normalized_preferences,
+        "flights_confirmed": False,
+        "flight_pipeline_metrics": [
+            *(runtime.state.get("flight_pipeline_metrics") or []), *metrics
+        ][-100:],
+        "messages": [ToolMessage(
+            f"Itinerary:\n{_describe_legs(selected_legs)}" + (
+                "\n\nProblems:\n" + "\n".join(notes) if notes else ""
+            ),
+            tool_call_id=runtime.tool_call_id,
+        )],
+    }
+    return Command(update=apply_phase_transition(runtime.state, updates))
 
 
 @tool

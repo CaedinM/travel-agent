@@ -14,6 +14,18 @@ const formatDate = (date) => {
   const match = typeof date === "string" && date.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   return match ? `${match[2]}/${match[3]}/${match[1].slice(-2)}` : "";
 };
+const formatTime = (timestamp) => {
+  const date = timestamp ? new Date(timestamp) : null;
+  return date && !Number.isNaN(date.valueOf())
+    ? new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" }).format(date)
+    : "Time unavailable";
+};
+const formatDuration = (minutes) => {
+  if (!Number.isFinite(minutes)) return "Duration unavailable";
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return `${hours}h${remainder ? ` ${remainder}m` : ""}`;
+};
 
 function ProgressItem({ label, complete, children }) {
   return <li className={`progress-item ${complete ? "complete" : ""}`}>
@@ -52,13 +64,36 @@ function Message({ message }) {
   </article>;
 }
 
-function MessageStream({ messages, isSending, error, onStarter }) {
+function FlightOfferCard({ offer }) {
+  const carriers = offer.carriers?.length ? offer.carriers.join(" · ") : "Airline unavailable";
+  const stops = offer.stops === 0 ? "Nonstop" : offer.stops === 1 ? "1 stop" : Number.isInteger(offer.stops) ? `${offer.stops} stops` : "Stops unavailable";
+  const bag = offer.included_checked_baggage && !offer.included_checked_baggage.startsWith("Unknown")
+    ? offer.included_checked_baggage
+    : offer.additional_checked_baggage?.[0] ? `Extra bag: ${offer.additional_checked_baggage[0]}` : "Baggage details unavailable";
+  return <article className="flight-card" aria-label={`Selected flight from ${offer.origin} to ${offer.destination}`}>
+    <div className="flight-card-topline"><span>SELECTED FLIGHT · {String(offer.leg_index + 1).padStart(2, "0")}</span><strong>{offer.price} <small>{offer.currency}</small></strong></div>
+    <div className="flight-route"><div><b>{offer.origin}</b><time>{formatTime(offer.departure)}</time></div><div className="flight-line"><i /><span>{formatDuration(offer.duration_minutes)}</span><i /></div><div><b>{offer.destination}</b><time>{formatTime(offer.arrival)}</time></div></div>
+    <div className="flight-meta"><span>{carriers}</span><span>{stops}</span></div>
+    <div className="flight-bag"><span aria-hidden="true">◒</span>{bag}</div>
+  </article>;
+}
+
+function FlightOfferCards({ offers }) {
+  if (!offers?.length) return null;
+  return <section className="flight-offers" aria-label="Selected flight offers">
+    <div className="flight-offers-heading"><p className="eyebrow">YOUR ITINERARY</p><span>{offers.length} {offers.length === 1 ? "leg" : "legs"} selected</span></div>
+    <div className="flight-offers-row">{offers.map((offer) => <FlightOfferCard key={`${offer.leg_index}-${offer.offer_id}`} offer={offer} />)}</div>
+  </section>;
+}
+
+function MessageStream({ messages, isSending, error, onStarter, offers }) {
   const endRef = useRef(null);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" }); }, [messages.length, isSending, error]);
 
   return <section className={`conversation ${messages.length ? "has-messages" : ""}`} aria-live="polite" aria-busy={isSending}>
     {!messages.length ? <Welcome onStarter={onStarter} /> : <div className="message-list">
       {messages.map((message) => <Message key={message.id} message={message} />)}
+      {!isSending && <FlightOfferCards offers={offers} />}
       {isSending && <article className="message assistant"><div className="avatar"><Sparkle /></div><div className="typing" aria-label="Agent is thinking"><i /><i /><i /></div></article>}
       {error && <p className="stream-error" role="alert">{error}</p>}
     </div>}
@@ -146,7 +181,7 @@ function App({ clerk }) {
     } finally { setIsSending(false); }
   };
   const resetConversation = () => { progressRequest.current += 1; setMessages([]); setThreadId(null); setProgress(null); setError(""); };
-  return <main className="app-shell"><header className="topbar"><a className="wordmark" href="/" aria-label="Travel Agentic home">Travel Agentic<span>.</span></a><button className="new-chat" onClick={resetConversation}>New conversation</button><UserMenu clerk={clerk} /></header><div className="workspace"><div className="chat-column"><MessageStream messages={messages} isSending={isSending} error={error} onStarter={sendMessage} /><ChatComposer disabled={isSending} onSend={sendMessage} /></div><TripProgress progress={progress} /></div></main>;
+  return <main className="app-shell"><header className="topbar"><a className="wordmark" href="/" aria-label="Travel Agentic home">Travel Agentic<span>.</span></a><button className="new-chat" onClick={resetConversation}>New conversation</button><UserMenu clerk={clerk} /></header><div className="workspace"><div className="chat-column"><MessageStream messages={messages} isSending={isSending} error={error} onStarter={sendMessage} offers={progress?.flights_ready ? progress.flight_offers : []} /><ChatComposer disabled={isSending} onSend={sendMessage} /></div><TripProgress progress={progress} /></div></main>;
 }
 
 function SignIn({ clerk }) {

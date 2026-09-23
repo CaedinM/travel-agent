@@ -1,5 +1,6 @@
 # Travel Agentic
 Chat with an AI agent to plan and book your next trip.
+Visit the deployed site at: https://travel-agent-564z.onrender.com
 
 ## Features:
 - Converse with the agent to plan a trip.
@@ -22,6 +23,7 @@ Chat with an AI agent to plan and book your next trip.
 - Auth: Clerk
 - Rate Limiting: Redis
 - Observability: LangSmith (optional)
+- Deployment: Render
 
 ## Project layout
 
@@ -68,6 +70,25 @@ cp .env.example .env
 | `FLIGHT_PIPELINE` | Optional: `jev` (default) or `legacy` to benchmark the preserved MCP/subagent path. |
 | `LANGSMITH_*` | Optional tracing configuration. Set `LANGSMITH_TRACING=false` to disable tracing. |
 | `REDIS_URL` | Required for chat rate limiting. Use `redis://localhost:6379/0` with the local Redis setup below. |
+| `DATABASE_URL` | Required PostgreSQL connection string. Use Render's internal connection string in production. |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | Signing secret for the Clerk `user.created` webhook. |
+
+## Render Postgres and Clerk user sync
+
+This repository includes [render.yaml](render.yaml), which provisions a Render
+Postgres instance named `travel-agent-postgres`. In Render, create a **Blueprint**
+from this repository, then set the API service's `DATABASE_URL` to the database's
+internal connection string. The API creates its `users` table on startup:
+
+```sql
+users(user_id UUID primary key, clerk_user_id TEXT unique, created_at timestamptz)
+```
+
+In the Clerk Dashboard, add a webhook endpoint at
+`https://<your-api-host>/webhooks/clerk`, select the `user.created` event, and
+copy its signing secret into Render as `CLERK_WEBHOOK_SIGNING_SECRET`. Each valid
+event creates one row with a server-generated UUID. Delivery retries are safe:
+the unique Clerk ID means the same account cannot create a second row.
 
 ## Running Locally
 The API connects to Redis for chat rate limiting, but does not start Redis itself.
@@ -107,13 +128,13 @@ to find flights. The new system uses a deterministic call to the Duffel.com API,
 drops disqualified candidates and then serves the rest to Jev along with the user's
 preferences to choose the "best" option.
 
-To observe the latency and token cost gains, I ran both systems against a test set
+To observe the latencygains, I ran both systems against a test set
 of 10 mock TripStates. Experiment can be found in `experiments/flights_evaluation/`
 The results:
 
 | System | Average end-to-end time per request | Total estimated token cost |
 |---|---|---|
-| Deterministic Duffel search + Jev Classifier | ~2.33s | $0.00358 |
-| GPT-5-mini + flights-mcp | ~14.91s | $0.02943 |
+| Deterministic Duffel search + Jev Classifier | ~2.65s | $0.003789 |
+| GPT-6-luna + flights-mcp | ~6.72s | $0.003142 |
 
-**Jev is roughly 6.4× faster and 8.2× cheaper**
+**Both gave identical selections with comparable cost, yet Jev was almost 3x faster**

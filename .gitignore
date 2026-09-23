@@ -11,3 +11,10 @@ AGENTS.md
 agent_notebook.ipynb
 
 .langgraph_api/
+
+# Python tooling and local OS files
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.DS_Store

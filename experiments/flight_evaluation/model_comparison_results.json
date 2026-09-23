@@ -1,0 +1,1490 @@
+{
+  "results": [
+    {
+      "id": 1,
+      "prompt": "Find the best flight for the traveller's stated preferences.",
+      "jev_models": {
+        "jev-1.13.0": {
+          "model": "jev-1.13.0",
+          "end_to_end_ms": 2562,
+          "input_tokens": 16655,
+          "output_tokens": 950,
+          "total_token_cost_usd": 0.00069951,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "LHR",
+              "destination": "CDG",
+              "offer_id": "off_0000BAggAblCtPfrUNP55J",
+              "price": "41.93",
+              "currency": "USD",
+              "reasoning": "Selected by Jev from 39 viable options with 100% decision confidence.",
+              "departure": "2026-10-15T10:50:00",
+              "arrival": "2026-10-15T12:52:00",
+              "duration_minutes": 62,
+              "stops": 0,
+              "carriers": [
+                "Duffel Airways"
+              ],
+              "included_checked_baggage": "1 checked bag included per passenger",
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "jev",
+              "leg_index": 0,
+              "duffel_ms": 2011,
+              "baggage_enrichment_ms": null,
+              "selection_ms": 513,
+              "total_ms": 2526,
+              "candidates": 39,
+              "selected_offer_id": "off_0000BAggAblCtPfrUNP55J",
+              "selection_confidence": 1.0,
+              "input_tokens": 16655,
+              "output_tokens": 950,
+              "model": "jev-1.13.0",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      },
+      "legacy_models": {
+        "openai:gpt-5-mini": {
+          "model": "openai:gpt-5-mini",
+          "setup_ms": 421,
+          "end_to_end_ms": 14203,
+          "input_tokens": 2798,
+          "output_tokens": 843,
+          "total_token_cost_usd": 0.0023855,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "LHR",
+              "destination": "CDG",
+              "offer_id": "off_0000BAggB59w50pkVcevzg",
+              "price": "42.38",
+              "currency": "USD",
+              "reasoning": "Chose this offer because it is by far the lowest fare (USD 42.38) and is a non-stop departing at a civilised 10:50, so it avoids early-morning departures and connections for only a tiny saving.",
+              "departure": null,
+              "arrival": null,
+              "duration_minutes": null,
+              "stops": null,
+              "carriers": [],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 13706,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggB59w50pkVcevzg",
+              "selection_confidence": null,
+              "input_tokens": 2798,
+              "output_tokens": 843,
+              "model": "openai:gpt-5-mini",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        },
+        "openai:gpt-6-luna": {
+          "model": "openai:gpt-6-luna",
+          "setup_ms": 417,
+          "end_to_end_ms": 7505,
+          "input_tokens": 2801,
+          "output_tokens": 146,
+          "total_token_cost_usd": 0.0003531,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "LHR",
+              "destination": "CDG",
+              "offer_id": "off_0000BAggCUSozZUFREhYC7",
+              "price": "41.82",
+              "currency": "USD",
+              "reasoning": "The $41.82 nonstop at 10:50 avoids both an early departure and a connection, so it is a far better fit than the slightly less expensive-inconsequential alternatives.",
+              "departure": "10:50",
+              "arrival": "12:52",
+              "duration_minutes": 62,
+              "stops": 0,
+              "carriers": [
+                "Duffel Airways"
+              ],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 7009,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggCUSozZUFREhYC7",
+              "selection_confidence": null,
+              "input_tokens": 2801,
+              "output_tokens": 146,
+              "model": "openai:gpt-6-luna",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "id": 2,
+      "prompt": "Find a good-value flight.",
+      "jev_models": {
+        "jev-1.13.0": {
+          "model": "jev-1.13.0",
+          "end_to_end_ms": 1532,
+          "input_tokens": 4208,
+          "output_tokens": 253,
+          "total_token_cost_usd": 0.00017674,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "JFK",
+              "destination": "LAX",
+              "offer_id": "off_0000BAggCqRlkcrfSUqDQ3",
+              "price": "166.46",
+              "currency": "USD",
+              "reasoning": "Selected by Jev from 9 viable options with 50% decision confidence.",
+              "departure": "2026-11-05T03:05:00",
+              "arrival": "2026-11-05T05:57:00",
+              "duration_minutes": 352,
+              "stops": 0,
+              "carriers": [
+                "Duffel Airways"
+              ],
+              "included_checked_baggage": "1 checked bag included per passenger",
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "jev",
+              "leg_index": 0,
+              "duffel_ms": 1306,
+              "baggage_enrichment_ms": null,
+              "selection_ms": 207,
+              "total_ms": 1513,
+              "candidates": 9,
+              "selected_offer_id": "off_0000BAggCqRlkcrfSUqDQ3",
+              "selection_confidence": 0.5,
+              "input_tokens": 4208,
+              "output_tokens": 253,
+              "model": "jev-1.13.0",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      },
+      "legacy_models": {
+        "openai:gpt-5-mini": {
+          "model": "openai:gpt-5-mini",
+          "setup_ms": 453,
+          "end_to_end_ms": 16683,
+          "input_tokens": 2341,
+          "output_tokens": 1273,
+          "total_token_cost_usd": 0.00313125,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "JFK",
+              "destination": "LAX",
+              "offer_id": "off_0000BAggDCTNMs4fvhIc95",
+              "price": "164.66",
+              "currency": "USD",
+              "reasoning": "Chose this offer because it's the cheapest by far and a non-stop (5h52) \u2014 a large saving over the next option \u2014 at the cost of a very early 03:05 departure before 06:00.",
+              "departure": "2026-11-05T03:05:00",
+              "arrival": "2026-11-05T05:57:00",
+              "duration_minutes": 352,
+              "stops": 0,
+              "carriers": [
+                "Duffel Airways"
+              ],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 16069,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggDCTNMs4fvhIc95",
+              "selection_confidence": null,
+              "input_tokens": 2341,
+              "output_tokens": 1273,
+              "model": "openai:gpt-5-mini",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        },
+        "openai:gpt-6-luna": {
+          "model": "openai:gpt-6-luna",
+          "setup_ms": 848,
+          "end_to_end_ms": 5615,
+          "input_tokens": 2328,
+          "output_tokens": 120,
+          "total_token_cost_usd": 0.0002928,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "JFK",
+              "destination": "LAX",
+              "offer_id": "off_0000BAggEnwtWBViRus5PC",
+              "price": "238.39",
+              "currency": "USD",
+              "reasoning": "It costs $73.11 more than the cheapest option, but avoids the 03:05 departure and offers a more convenient 11:32 departure with just one stop and an 8h33 trip.",
+              "departure": null,
+              "arrival": null,
+              "duration_minutes": null,
+              "stops": null,
+              "carriers": [],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 4697,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggEnwtWBViRus5PC",
+              "selection_confidence": null,
+              "input_tokens": 2328,
+              "output_tokens": 120,
+              "model": "openai:gpt-6-luna",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "id": 3,
+      "prompt": "Choose the flight that makes the most sense.",
+      "jev_models": {
+        "jev-1.13.0": {
+          "model": "jev-1.13.0",
+          "end_to_end_ms": 1625,
+          "input_tokens": 17096,
+          "output_tokens": 1012,
+          "total_token_cost_usd": 0.00071803,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "SFO",
+              "destination": "SEA",
+              "offer_id": "off_0000BAggF2usMQxKi9VNgE",
+              "price": "133.78",
+              "currency": "USD",
+              "reasoning": "Selected by Jev from 40 viable options with 96% decision confidence.",
+              "departure": "2026-10-29T21:40:00",
+              "arrival": "2026-10-29T23:42:00",
+              "duration_minutes": 122,
+              "stops": 0,
+              "carriers": [
+                "Iberia"
+              ],
+              "included_checked_baggage": "1 checked bag included per passenger",
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "jev",
+              "leg_index": 0,
+              "duffel_ms": 1288,
+              "baggage_enrichment_ms": null,
+              "selection_ms": 310,
+              "total_ms": 1600,
+              "candidates": 40,
+              "selected_offer_id": "off_0000BAggF2usMQxKi9VNgE",
+              "selection_confidence": 0.96,
+              "input_tokens": 17096,
+              "output_tokens": 1012,
+              "model": "jev-1.13.0",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      },
+      "legacy_models": {
+        "openai:gpt-5-mini": {
+          "model": "openai:gpt-5-mini",
+          "setup_ms": 463,
+          "end_to_end_ms": 20871,
+          "input_tokens": 3625,
+          "output_tokens": 1282,
+          "total_token_cost_usd": 0.00347025,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "SFO",
+              "destination": "SEA",
+              "offer_id": "off_0000BAggFVPgPUEh5o8Nam",
+              "price": "136.40",
+              "currency": "USD",
+              "reasoning": "Provides the best balance of price and convenience: it's one of the lowest fares (136.40 USD) while being a non-stop at a civilised mid-morning time (depart 09:43, arrive 11:55), avoiding very early departures or late arrivals.",
+              "departure": "2026-10-29T09:43:00",
+              "arrival": "2026-10-29T11:55:00",
+              "duration_minutes": 132,
+              "stops": 0,
+              "carriers": [
+                "Alaska Airlines"
+              ],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 20320,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggFVPgPUEh5o8Nam",
+              "selection_confidence": null,
+              "input_tokens": 3625,
+              "output_tokens": 1282,
+              "model": "openai:gpt-5-mini",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        },
+        "openai:gpt-6-luna": {
+          "model": "openai:gpt-6-luna",
+          "setup_ms": 395,
+          "end_to_end_ms": 4905,
+          "input_tokens": 3615,
+          "output_tokens": 118,
+          "total_token_cost_usd": 0.0004205,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "SFO",
+              "destination": "SEA",
+              "offer_id": "off_0000BAggHKaJ9NjKFKVlUy",
+              "price": "136.40",
+              "currency": "USD",
+              "reasoning": "It is a reasonably timed nonstop arriving early evening at the same lowest regular nonstop fare; the even cheaper option arrives at 23:42, so avoiding that late arrival is worth the small premium.",
+              "departure": null,
+              "arrival": null,
+              "duration_minutes": null,
+              "stops": null,
+              "carriers": [],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 4439,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggHKaJ9NjKFKVlUy",
+              "selection_confidence": null,
+              "input_tokens": 3615,
+              "output_tokens": 118,
+              "model": "openai:gpt-6-luna",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "id": 4,
+      "prompt": "Search using the requirements exactly.",
+      "jev_models": {
+        "jev-1.13.0": {
+          "model": "jev-1.13.0",
+          "end_to_end_ms": 1444,
+          "input_tokens": 4618,
+          "output_tokens": 269,
+          "total_token_cost_usd": 0.00019396,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "LAX",
+              "destination": "JFK",
+              "offer_id": "off_0000BAggHdXoes1h36UXk8",
+              "price": "918.90",
+              "currency": "USD",
+              "reasoning": "Selected by Jev from 10 viable options with 41% decision confidence.",
+              "departure": "2026-12-03T09:05:00",
+              "arrival": "2026-12-04T06:30:00",
+              "duration_minutes": 1105,
+              "stops": 1,
+              "carriers": [
+                "Alaska Airlines"
+              ],
+              "included_checked_baggage": "0 checked bags included per passenger",
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "jev",
+              "leg_index": 0,
+              "duffel_ms": 1230,
+              "baggage_enrichment_ms": null,
+              "selection_ms": 196,
+              "total_ms": 1426,
+              "candidates": 10,
+              "selected_offer_id": "off_0000BAggHdXoes1h36UXk8",
+              "selection_confidence": 0.41,
+              "input_tokens": 4618,
+              "output_tokens": 269,
+              "model": "jev-1.13.0",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      },
+      "legacy_models": {
+        "openai:gpt-5-mini": {
+          "model": "openai:gpt-5-mini",
+          "setup_ms": 392,
+          "end_to_end_ms": 16006,
+          "input_tokens": 2812,
+          "output_tokens": 913,
+          "total_token_cost_usd": 0.002529,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "LAX",
+              "destination": "JFK",
+              "offer_id": "off_0000BAggI7uoEPOL5FwWaW",
+              "price": "163.11",
+              "currency": "USD",
+              "reasoning": "This is the only nonstop on the date so I chose it even though it departs at 01:32 (violating your 'do not leave before 09:00' preference) because you requested nonstop only and no nonstop departs after 09:00.",
+              "departure": null,
+              "arrival": null,
+              "duration_minutes": null,
+              "stops": null,
+              "carriers": [],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 15543,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggI7uoEPOL5FwWaW",
+              "selection_confidence": null,
+              "input_tokens": 2812,
+              "output_tokens": 913,
+              "model": "openai:gpt-5-mini",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        },
+        "openai:gpt-6-luna": {
+          "model": "openai:gpt-6-luna",
+          "setup_ms": 452,
+          "end_to_end_ms": 4691,
+          "input_tokens": 2236,
+          "output_tokens": 125,
+          "total_token_cost_usd": 0.0002861,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "LAX",
+              "destination": "JFK",
+              "offer_id": "off_0000BAggJIlAuCufAMXAMu",
+              "price": "167.55",
+              "currency": "USD",
+              "reasoning": "The only nonstop is the lowest-fare option, but it departs at 01:32, so it misses your required 09:00-or-later departure; no listed flight meets both nonstop and departure-time preferences.",
+              "departure": null,
+              "arrival": null,
+              "duration_minutes": null,
+              "stops": null,
+              "carriers": [],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 4168,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggJIlAuCufAMXAMu",
+              "selection_confidence": null,
+              "input_tokens": 2236,
+              "output_tokens": 125,
+              "model": "openai:gpt-6-luna",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "id": 5,
+      "prompt": "Recommend the best available flight.",
+      "jev_models": {
+        "jev-1.13.0": {
+          "model": "jev-1.13.0",
+          "end_to_end_ms": 2164,
+          "input_tokens": 14202,
+          "output_tokens": 837,
+          "total_token_cost_usd": 0.00059648,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "CDG",
+              "destination": "FCO",
+              "offer_id": "off_0000BAggJctGYIPrROw6aa",
+              "price": "67.10",
+              "currency": "USD",
+              "reasoning": "Selected by Jev from 33 viable options with 100% decision confidence.",
+              "departure": "2027-01-14T10:03:00",
+              "arrival": "2027-01-14T12:06:00",
+              "duration_minutes": 123,
+              "stops": 0,
+              "carriers": [
+                "British Airways"
+              ],
+              "included_checked_baggage": "1 checked bag included per passenger",
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "jev",
+              "leg_index": 0,
+              "duffel_ms": 1896,
+              "baggage_enrichment_ms": null,
+              "selection_ms": 246,
+              "total_ms": 2145,
+              "candidates": 33,
+              "selected_offer_id": "off_0000BAggJctGYIPrROw6aa",
+              "selection_confidence": 1.0,
+              "input_tokens": 14202,
+              "output_tokens": 837,
+              "model": "jev-1.13.0",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      },
+      "legacy_models": {
+        "openai:gpt-5-mini": {
+          "model": "openai:gpt-5-mini",
+          "setup_ms": 516,
+          "end_to_end_ms": 19969,
+          "input_tokens": 2993,
+          "output_tokens": 1207,
+          "total_token_cost_usd": 0.00316225,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "CDG",
+              "destination": "FCO",
+              "offer_id": "off_0000BAggK0MpGYjAFjwXMN",
+              "price": "68.43",
+              "currency": "USD",
+              "reasoning": "Selected because it is the cheapest fare and a short non-stop that departs at 10:03 and arrives at 12:06, meeting the traveller's preference to avoid early departures and late arrivals without adding connections.",
+              "departure": "2027-01-14T10:03:00",
+              "arrival": "2027-01-14T12:06:00",
+              "duration_minutes": 123,
+              "stops": 0,
+              "carriers": [
+                "Duffel Airways"
+              ],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 19381,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggK0MpGYjAFjwXMN",
+              "selection_confidence": null,
+              "input_tokens": 2993,
+              "output_tokens": 1207,
+              "model": "openai:gpt-5-mini",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        },
+        "openai:gpt-6-luna": {
+          "model": "openai:gpt-6-luna",
+          "setup_ms": 400,
+          "end_to_end_ms": 5304,
+          "input_tokens": 2972,
+          "output_tokens": 121,
+          "total_token_cost_usd": 0.0003577,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "CDG",
+              "destination": "FCO",
+              "offer_id": "off_0000BAggLnSgDgMeo2XHOt",
+              "price": "67.13",
+              "currency": "USD",
+              "reasoning": "It meets both time preferences with a 10:03 departure and 12:06 arrival, and its nonstop flight at the lowest fare is a better tradeoff than the longer, connected alternatives.",
+              "departure": null,
+              "arrival": null,
+              "duration_minutes": null,
+              "stops": null,
+              "carriers": [],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 4831,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggLnSgDgMeo2XHOt",
+              "selection_confidence": null,
+              "input_tokens": 2972,
+              "output_tokens": 121,
+              "model": "openai:gpt-6-luna",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "id": 6,
+      "prompt": "Find the best flight for this trip.",
+      "jev_models": {
+        "jev-1.13.0": {
+          "model": "jev-1.13.0",
+          "end_to_end_ms": 1847,
+          "input_tokens": 15872,
+          "output_tokens": 908,
+          "total_token_cost_usd": 0.00066662,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "NRT",
+              "destination": "ICN",
+              "offer_id": "off_0000BAggMEbCpd5189Gm5w",
+              "price": "134.40",
+              "currency": "USD",
+              "reasoning": "Selected by Jev from 37 viable options with 83% decision confidence.",
+              "departure": "2026-11-18T10:40:00",
+              "arrival": "2026-11-18T13:30:00",
+              "duration_minutes": 170,
+              "stops": 0,
+              "carriers": [
+                "Jeju Air"
+              ],
+              "included_checked_baggage": "1 checked bag included per passenger",
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "jev",
+              "leg_index": 0,
+              "duffel_ms": 1550,
+              "baggage_enrichment_ms": null,
+              "selection_ms": 276,
+              "total_ms": 1828,
+              "candidates": 37,
+              "selected_offer_id": "off_0000BAggMEbCpd5189Gm5w",
+              "selection_confidence": 0.83,
+              "input_tokens": 15872,
+              "output_tokens": 908,
+              "model": "jev-1.13.0",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      },
+      "legacy_models": {
+        "openai:gpt-5-mini": {
+          "model": "openai:gpt-5-mini",
+          "setup_ms": 426,
+          "end_to_end_ms": 17701,
+          "input_tokens": 3256,
+          "output_tokens": 912,
+          "total_token_cost_usd": 0.002638,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "NRT",
+              "destination": "ICN",
+              "offer_id": "off_0000BAggMaj13jXxatYWAD",
+              "price": "134.40",
+              "currency": "USD",
+              "reasoning": "Morning non-stop at 10:40 with Jeju Air offers the best balance of price and preferences \u2014 it provides a morning direct flight for a modest premium over the absolute cheapest option, avoiding the much larger fare for earlier 08:30 Asiana or premium carriers.",
+              "departure": null,
+              "arrival": null,
+              "duration_minutes": null,
+              "stops": null,
+              "carriers": [],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 17186,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggMaj13jXxatYWAD",
+              "selection_confidence": null,
+              "input_tokens": 3256,
+              "output_tokens": 912,
+              "model": "openai:gpt-5-mini",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        },
+        "openai:gpt-6-luna": {
+          "model": "openai:gpt-6-luna",
+          "setup_ms": 821,
+          "end_to_end_ms": 4117,
+          "input_tokens": 2000,
+          "output_tokens": 111,
+          "total_token_cost_usd": 0.0002555,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "NRT",
+              "destination": "ICN",
+              "offer_id": "off_0000BAggO8bgnRfZK1qZLm",
+              "price": "74.75",
+              "currency": "USD",
+              "reasoning": "This is the only available option and it is direct at a modest fare, though its 13:09 departure does not meet your morning preference.",
+              "departure": null,
+              "arrival": null,
+              "duration_minutes": null,
+              "stops": null,
+              "carriers": [],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 3190,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggO8bgnRfZK1qZLm",
+              "selection_confidence": null,
+              "input_tokens": 2000,
+              "output_tokens": 111,
+              "model": "openai:gpt-6-luna",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "id": 7,
+      "prompt": "Find the cheapest practical flight.",
+      "jev_models": {
+        "jev-1.13.0": {
+          "model": "jev-1.13.0",
+          "end_to_end_ms": 1663,
+          "input_tokens": 852,
+          "output_tokens": 57,
+          "total_token_cost_usd": 3.578e-05,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "SYD",
+              "destination": "MEL",
+              "offer_id": "off_0000BAggOLhLtpyvZIcECR",
+              "price": "160.50",
+              "currency": "USD",
+              "reasoning": "Selected by Jev from 1 viable options with 100% decision confidence.",
+              "departure": "2026-12-10T06:58:00",
+              "arrival": "2026-12-10T08:29:00",
+              "duration_minutes": 91,
+              "stops": 0,
+              "carriers": [
+                "British Airways"
+              ],
+              "included_checked_baggage": "1 checked bag included per passenger",
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "jev",
+              "leg_index": 0,
+              "duffel_ms": 1421,
+              "baggage_enrichment_ms": null,
+              "selection_ms": 222,
+              "total_ms": 1644,
+              "candidates": 1,
+              "selected_offer_id": "off_0000BAggOLhLtpyvZIcECR",
+              "selection_confidence": 1.0,
+              "input_tokens": 852,
+              "output_tokens": 57,
+              "model": "jev-1.13.0",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      },
+      "legacy_models": {
+        "openai:gpt-5-mini": {
+          "model": "openai:gpt-5-mini",
+          "setup_ms": 490,
+          "end_to_end_ms": 13003,
+          "input_tokens": 1969,
+          "output_tokens": 752,
+          "total_token_cost_usd": 0.00199625,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "SYD",
+              "destination": "MEL",
+              "offer_id": "off_0000BAggOiFvXVYxgkUxJF",
+              "price": "54.44",
+              "currency": "USD",
+              "reasoning": "Selected because it's the cheapest practical option and a direct flight at a civilised time (06:58\u201308:29), giving the best price-to-convenience tradeoff.",
+              "departure": "2026-12-10T06:58:00",
+              "arrival": "2026-12-10T08:29:00",
+              "duration_minutes": 91,
+              "stops": 0,
+              "carriers": [
+                "Duffel Airways"
+              ],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 12417,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggOiFvXVYxgkUxJF",
+              "selection_confidence": null,
+              "input_tokens": 1969,
+              "output_tokens": 752,
+              "model": "openai:gpt-5-mini",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        },
+        "openai:gpt-6-luna": {
+          "model": "openai:gpt-6-luna",
+          "setup_ms": 514,
+          "end_to_end_ms": 4151,
+          "input_tokens": 1967,
+          "output_tokens": 110,
+          "total_token_cost_usd": 0.0002517,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "SYD",
+              "destination": "MEL",
+              "offer_id": "off_0000BAggPoxu5190mpb2IM",
+              "price": "54.19",
+              "currency": "USD",
+              "reasoning": "It is the only available option, and its direct 1h 31m flight at a civilised time keeps the fare low without a connection.",
+              "departure": null,
+              "arrival": null,
+              "duration_minutes": null,
+              "stops": null,
+              "carriers": [],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 3527,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggPoxu5190mpb2IM",
+              "selection_confidence": null,
+              "input_tokens": 1967,
+              "output_tokens": 110,
+              "model": "openai:gpt-6-luna",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "id": 8,
+      "prompt": "Use the traveller's preferences to pick one offer.",
+      "jev_models": {
+        "jev-1.13.0": {
+          "model": "jev-1.13.0",
+          "end_to_end_ms": 1419,
+          "input_tokens": 2566,
+          "output_tokens": 170,
+          "total_token_cost_usd": 0.00010777,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "BOS",
+              "destination": "MIA",
+              "offer_id": "off_0000BAggQ4rOyxS05Ig4O6",
+              "price": "99.30",
+              "currency": "USD",
+              "reasoning": "Selected by Jev from 5 viable options with 80% decision confidence.",
+              "departure": "2027-02-12T08:30:00",
+              "arrival": "2027-02-12T11:47:00",
+              "duration_minutes": 197,
+              "stops": 0,
+              "carriers": [
+                "British Airways"
+              ],
+              "included_checked_baggage": "1 checked bag included per passenger",
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "jev",
+              "leg_index": 0,
+              "duffel_ms": 1206,
+              "baggage_enrichment_ms": null,
+              "selection_ms": 194,
+              "total_ms": 1400,
+              "candidates": 5,
+              "selected_offer_id": "off_0000BAggQ4rOyxS05Ig4O6",
+              "selection_confidence": 0.8,
+              "input_tokens": 2566,
+              "output_tokens": 170,
+              "model": "jev-1.13.0",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      },
+      "legacy_models": {
+        "openai:gpt-5-mini": {
+          "model": "openai:gpt-5-mini",
+          "setup_ms": 541,
+          "end_to_end_ms": 19598,
+          "input_tokens": 2181,
+          "output_tokens": 1458,
+          "total_token_cost_usd": 0.00346125,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "BOS",
+              "destination": "MIA",
+              "offer_id": "off_0000BAggQsx8jtkXRZkMGn",
+              "price": "99.51",
+              "currency": "USD",
+              "reasoning": "I chose this offer because it is the absolute cheapest at 99.51 USD and is non-stop, so it satisfies the traveller's price-first instruction while also meeting the direct-flight preference.",
+              "departure": "2027-02-12T08:30:00",
+              "arrival": "2027-02-12T11:47:00",
+              "duration_minutes": 197,
+              "stops": 0,
+              "carriers": [
+                "Iberia"
+              ],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 18985,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggQsx8jtkXRZkMGn",
+              "selection_confidence": null,
+              "input_tokens": 2181,
+              "output_tokens": 1458,
+              "model": "openai:gpt-5-mini",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        },
+        "openai:gpt-6-luna": {
+          "model": "openai:gpt-6-luna",
+          "setup_ms": 394,
+          "end_to_end_ms": 4135,
+          "input_tokens": 2177,
+          "output_tokens": 112,
+          "total_token_cost_usd": 0.0002737,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "BOS",
+              "destination": "MIA",
+              "offer_id": "off_0000BAggS8GfzyDbQfvI1r",
+              "price": "97.51",
+              "currency": "USD",
+              "reasoning": "The traveller prioritizes the absolute cheapest option even if it has two stops, and the cheapest listed flight is also nonstop, satisfying the direct-flight preference.",
+              "departure": null,
+              "arrival": null,
+              "duration_minutes": null,
+              "stops": null,
+              "carriers": [],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 3671,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggS8GfzyDbQfvI1r",
+              "selection_confidence": null,
+              "input_tokens": 2177,
+              "output_tokens": 112,
+              "model": "openai:gpt-6-luna",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "prompt": "Find the best balance for this flight.",
+      "jev_models": {
+        "jev-1.13.0": {
+          "model": "jev-1.13.0",
+          "end_to_end_ms": 10650,
+          "input_tokens": 11607,
+          "output_tokens": 665,
+          "total_token_cost_usd": 0.00048749,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "AMS",
+              "destination": "BCN",
+              "offer_id": "off_0000BAggSNmmItoFYa3dex",
+              "price": "145.42",
+              "currency": "USD",
+              "reasoning": "Selected by Jev from 27 viable options with 100% decision confidence.",
+              "departure": "2026-10-22T16:15:00",
+              "arrival": "2026-10-22T18:29:00",
+              "duration_minutes": 134,
+              "stops": 0,
+              "carriers": [
+                "Duffel Airways"
+              ],
+              "included_checked_baggage": "1 checked bag included per passenger",
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "jev",
+              "leg_index": 0,
+              "duffel_ms": 10407,
+              "baggage_enrichment_ms": null,
+              "selection_ms": 220,
+              "total_ms": 10629,
+              "candidates": 27,
+              "selected_offer_id": "off_0000BAggSNmmItoFYa3dex",
+              "selection_confidence": 1.0,
+              "input_tokens": 11607,
+              "output_tokens": 665,
+              "model": "jev-1.13.0",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      },
+      "legacy_models": {
+        "openai:gpt-5-mini": {
+          "model": "openai:gpt-5-mini",
+          "setup_ms": 426,
+          "end_to_end_ms": 27548,
+          "input_tokens": 3162,
+          "output_tokens": 762,
+          "total_token_cost_usd": 0.0023145,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "AMS",
+              "destination": "BCN",
+              "offer_id": "off_0000BAggTpa0EE7ngxn9wg",
+              "price": "72.28",
+              "currency": "USD",
+              "reasoning": "This Iberia nonstop at USD 72.28 is the lowest-priced option by a large margin while matching your preferences \u2014 it\u2019s direct and departs at a civilised 16:15, avoiding early-morning departures or late arrivals.",
+              "departure": "2026-10-22T16:15:00",
+              "arrival": "2026-10-22T18:29:00",
+              "duration_minutes": 134,
+              "stops": 0,
+              "carriers": [
+                "Iberia"
+              ],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 27036,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggTpa0EE7ngxn9wg",
+              "selection_confidence": null,
+              "input_tokens": 3162,
+              "output_tokens": 762,
+              "model": "openai:gpt-5-mini",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        },
+        "openai:gpt-6-luna": {
+          "model": "openai:gpt-6-luna",
+          "setup_ms": 490,
+          "end_to_end_ms": 18404,
+          "input_tokens": 3138,
+          "output_tokens": 116,
+          "total_token_cost_usd": 0.0003718,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "AMS",
+              "destination": "BCN",
+              "offer_id": "off_0000BAggW2qpMiq3afFpr8",
+              "price": "71.84",
+              "currency": "USD",
+              "reasoning": "This is the lowest-cost option and still a direct flight at a civilised 16:15 departure, so it balances your cost priority with avoiding an early start and a connection.",
+              "departure": null,
+              "arrival": null,
+              "duration_minutes": null,
+              "stops": null,
+              "carriers": [],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 17845,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggW2qpMiq3afFpr8",
+              "selection_confidence": null,
+              "input_tokens": 3138,
+              "output_tokens": 116,
+              "model": "openai:gpt-6-luna",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "prompt": "Select the offer that best follows the stated criteria.",
+      "jev_models": {
+        "jev-1.13.0": {
+          "model": "jev-1.13.0",
+          "end_to_end_ms": 1664,
+          "input_tokens": 2535,
+          "output_tokens": 152,
+          "total_token_cost_usd": 0.00010647,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "ORD",
+              "destination": "DEN",
+              "offer_id": "off_0000BAggXhucBe4LEEooZ1",
+              "price": "332.20",
+              "currency": "USD",
+              "reasoning": "Selected by Jev from 5 viable options with 40% decision confidence.",
+              "departure": "2027-03-06T08:00:00",
+              "arrival": "2027-03-06T15:16:00",
+              "duration_minutes": 496,
+              "stops": 1,
+              "carriers": [
+                "Alaska Airlines"
+              ],
+              "included_checked_baggage": "0 checked bags included per passenger",
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "jev",
+              "leg_index": 0,
+              "duffel_ms": 1448,
+              "baggage_enrichment_ms": null,
+              "selection_ms": 197,
+              "total_ms": 1646,
+              "candidates": 5,
+              "selected_offer_id": "off_0000BAggXhucBe4LEEooZ1",
+              "selection_confidence": 0.4,
+              "input_tokens": 2535,
+              "output_tokens": 152,
+              "model": "jev-1.13.0",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      },
+      "legacy_models": {
+        "openai:gpt-5-mini": {
+          "model": "openai:gpt-5-mini",
+          "setup_ms": 438,
+          "end_to_end_ms": 17435,
+          "input_tokens": 2023,
+          "output_tokens": 889,
+          "total_token_cost_usd": 0.00228375,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "ORD",
+              "destination": "DEN",
+              "offer_id": "off_0000BAggXvjpUrqkJ3K8or",
+              "price": "77.85",
+              "currency": "USD",
+              "reasoning": "This is the only option that arrives before 09:00 and is the cheapest, but it departs at 03:52 (before 07:00), so it violates your no-early-departure/red-eye preference.",
+              "departure": "2027-03-06T03:52:00",
+              "arrival": "2027-03-06T05:21:00",
+              "duration_minutes": 149,
+              "stops": 0,
+              "carriers": [
+                "American Airlines"
+              ],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 16929,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggXvjpUrqkJ3K8or",
+              "selection_confidence": null,
+              "input_tokens": 2023,
+              "output_tokens": 889,
+              "model": "openai:gpt-5-mini",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        },
+        "openai:gpt-6-luna": {
+          "model": "openai:gpt-6-luna",
+          "setup_ms": 398,
+          "end_to_end_ms": 8392,
+          "input_tokens": 2203,
+          "output_tokens": 118,
+          "total_token_cost_usd": 0.0002793,
+          "flights": [
+            {
+              "leg_index": 0,
+              "origin": "ORD",
+              "destination": "DEN",
+              "offer_id": "off_0000BAggZVBSTuUqKcYKjA",
+              "price": "77.89",
+              "currency": "USD",
+              "reasoning": "This is the only option arriving before 09:00, and although its 03:52 departure violates your 07:00 minimum, the remaining flights arrive much later in the day.",
+              "departure": null,
+              "arrival": null,
+              "duration_minutes": null,
+              "stops": null,
+              "carriers": [],
+              "included_checked_baggage": null,
+              "additional_checked_baggage": [],
+              "error": null
+            }
+          ],
+          "metrics": [
+            {
+              "pipeline": "legacy",
+              "leg_index": 0,
+              "duffel_ms": null,
+              "baggage_enrichment_ms": null,
+              "selection_ms": null,
+              "total_ms": 7920,
+              "candidates": 0,
+              "selected_offer_id": "off_0000BAggZVBSTuUqKcYKjA",
+              "selection_confidence": null,
+              "input_tokens": 2203,
+              "output_tokens": 118,
+              "model": "openai:gpt-6-luna",
+              "error": null
+            }
+          ],
+          "error": null,
+          "status": "ok"
+        }
+      }
+    }
+  ]
+}

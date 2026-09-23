@@ -9,7 +9,7 @@ from travel_agent.flights.prefetch import FlightPrefetchCache
 
 
 @asynccontextmanager
-async def open_resources():
+async def open_resources(*, legacy_model=None):
     """Open only the services needed by the selected benchmark pipeline.
 
     Jev/direct-Duffel is the default. Set FLIGHT_PIPELINE=legacy to intentionally
@@ -31,6 +31,7 @@ async def open_resources():
                 flights_agent=build_flights_agent(
                     make_search_leg_tool(tools_by_name),
                     tools_by_name["get_offer_details"],
+                    model=legacy_model,
                 ),
                 flights_tools_by_name=tools_by_name,
             )

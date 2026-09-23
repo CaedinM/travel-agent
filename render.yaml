@@ -1,0 +1,8 @@
+databases:
+  - name: travel-agent-postgres
+    databaseName: travel_agent
+    user: travel_agent
+    plan: free
+    region: oregon
+    postgresMajorVersion: "17"
+    connectionPool: pgbouncer

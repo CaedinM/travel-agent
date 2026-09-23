@@ -12,7 +12,9 @@ from travel_agent.core.llm import LLM
 from travel_agent.core.models import BestOffer
 
 
-def build_flights_agent(search_leg: BaseTool, get_offer_details: BaseTool):
+def build_flights_agent(
+    search_leg: BaseTool, get_offer_details: BaseTool, *, model=None
+):
     """Build the specialist that selects the best offer for one flight leg."""
     system_prompt = """
     You are a flight-search specialist. You are given exactly one one-way hop and
@@ -47,7 +49,7 @@ def build_flights_agent(search_leg: BaseTool, get_offer_details: BaseTool):
     """
 
     return create_agent(
-        model=LLM,
+        model=model or LLM,
         tools=[search_leg, get_offer_details],
         system_prompt=system_prompt,
         response_format=ToolStrategy(

@@ -1,5 +1,6 @@
 """HTTP interface for the travel-planning agent."""
 
+import asyncio
 import os
 import uuid
 from contextlib import asynccontextmanager
@@ -14,9 +15,11 @@ from pydantic import BaseModel, Field
 
 from travel_agent.agents.orchestrator import build_orchestrator_agent
 from travel_agent.api.auth import current_user_id
+from travel_agent.api.webhooks import handle_clerk_webhook
 from travel_agent.core.models import BestOffer, FlightPipelineMetric
 from travel_agent.core.state import INITIAL_TRIP_PHASE, TripPhase
 from travel_agent.flights.duffel import DuffelClient
+from travel_agent.infrastructure.database import initialize_database
 from travel_agent.infrastructure.resources import open_resources
 from travel_agent.tools.trip import select_from_prefetched_requests
 
@@ -152,6 +155,7 @@ def trip_progress(thread_id: str, state: dict) -> TripProgressResponse:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Open shared service connections once and close them at shutdown."""
+    await asyncio.to_thread(initialize_database)
     redis_client = redis.from_url(redis_url)
     app.state.redis = redis_client
     try:
@@ -207,6 +211,12 @@ async def clerk_config() -> ClerkConfigResponse:
     if not publishable_key:
         raise HTTPException(status_code=503, detail="Clerk authentication is not configured.")
     return ClerkConfigResponse(publishable_key=publishable_key)
+
+
+@app.post("/webhooks/clerk", status_code=200)
+async def clerk_webhook(request: Request) -> dict[str, str]:
+    """Accept Clerk's signed lifecycle events without session authentication."""
+    return await handle_clerk_webhook(request)
 
 
 @app.get("/trips/{thread_id}/progress", response_model=TripProgressResponse)

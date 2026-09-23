@@ -19,7 +19,7 @@ from travel_agent.api.webhooks import handle_clerk_webhook
 from travel_agent.core.models import BestOffer, FlightPipelineMetric
 from travel_agent.core.state import INITIAL_TRIP_PHASE, TripPhase
 from travel_agent.flights.duffel import DuffelClient
-from travel_agent.infrastructure.database import initialize_database
+from travel_agent.infrastructure.database import create_thread, initialize_database
 from travel_agent.infrastructure.resources import open_resources
 from travel_agent.tools.trip import select_from_prefetched_requests
 
@@ -326,6 +326,10 @@ async def chat(
 
     is_new_trip = payload.thread_id is None
     thread_id = payload.thread_id or str(uuid.uuid4())
+    if is_new_trip:
+        # Persist ownership only; LangSmith remains the system of record for
+        # messages, model inputs, outputs, and traces.
+        await asyncio.to_thread(create_thread, user_id, thread_id)
     # The browser only sees the opaque UUID. Prefixing the persisted key with the
     # Clerk user ID prevents a guessed UUID from reading another user's trip.
     config = {"configurable": {"thread_id": f"{user_id}:{thread_id}"}}

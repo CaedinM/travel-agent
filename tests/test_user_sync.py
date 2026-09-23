@@ -45,6 +45,43 @@ def test_create_user_generates_uuid_and_uses_idempotent_insert(monkeypatch):
     assert "ON CONFLICT (clerk_user_id) DO NOTHING" in captured["query"]
 
 
+def test_create_thread_links_thread_to_application_user(monkeypatch):
+    captured = {}
+
+    class Cursor:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            pass
+
+        def execute(self, query, parameters):
+            captured["query"] = query
+            captured["parameters"] = parameters
+
+        def fetchone(self):
+            return (captured["parameters"][2],)
+
+    class Connection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            pass
+
+        def cursor(self):
+            return Cursor()
+
+    thread_id = str(uuid.uuid4())
+    monkeypatch.setenv("DATABASE_URL", "postgresql://example")
+    monkeypatch.setattr(database.psycopg, "connect", lambda _: Connection())
+
+    assert database.create_thread("user_123", thread_id)
+    assert captured["parameters"][1] == "user_123"
+    assert captured["parameters"][2] == uuid.UUID(thread_id)
+    assert "INSERT INTO threads (thread_id, user_id)" in captured["query"]
+
+
 def _request() -> Request:
     async def receive():
         return {"type": "http.request", "body": b'{"test": true}', "more_body": False}

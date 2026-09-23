@@ -18,3 +18,7 @@ agent_notebook.ipynb
 .coverage
 htmlcov/
 .DS_Store
+
+.agents/
+
+skills-lock.json

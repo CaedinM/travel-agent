@@ -4,8 +4,7 @@ Visit the deployed site at: https://travel-agent-564z.onrender.com
 
 ## Features:
 - Converse with the agent to plan a trip.
-- 
-- Chat interface also displays trip details as they are mentioned.
+- Chat interface displays trip details as they are mentioned.
 
 ## The Agent:
 - Uses dynamic prompts to correctly guide users through trip planning.
@@ -82,6 +81,7 @@ internal connection string. The API creates its `users` table on startup:
 
 ```sql
 users(user_id UUID primary key, clerk_user_id TEXT unique, created_at timestamptz)
+threads(thread_id UUID primary key, user_id UUID foreign key, created_at timestamptz)
 ```
 
 In the Clerk Dashboard, add a webhook endpoint at
@@ -89,6 +89,9 @@ In the Clerk Dashboard, add a webhook endpoint at
 copy its signing secret into Render as `CLERK_WEBHOOK_SIGNING_SECRET`. Each valid
 event creates one row with a server-generated UUID. Delivery retries are safe:
 the unique Clerk ID means the same account cannot create a second row.
+
+When a user starts a new chat, the API stores only its generated `thread_id` and
+the owning `user_id` in `threads`. Message content and tracing stay in LangSmith.
 
 ## Running Locally
 The API connects to Redis for chat rate limiting, but does not start Redis itself.

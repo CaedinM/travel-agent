@@ -14,6 +14,14 @@ CREATE TABLE IF NOT EXISTS users (
 )
 """
 
+_CREATE_THREADS_TABLE = """
+CREATE TABLE IF NOT EXISTS threads (
+    thread_id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+)
+"""
+
 
 def _database_url() -> str:
     """Return the required Render Postgres connection string."""
@@ -28,6 +36,7 @@ def initialize_database() -> None:
     with psycopg.connect(_database_url()) as connection:
         with connection.cursor() as cursor:
             cursor.execute(_CREATE_USERS_TABLE)
+            cursor.execute(_CREATE_THREADS_TABLE)
 
 
 def create_user(clerk_user_id: str) -> uuid.UUID | None:
@@ -50,3 +59,32 @@ def create_user(clerk_user_id: str) -> uuid.UUID | None:
             )
             row = cursor.fetchone()
     return row[0] if row else None
+
+
+def create_thread(clerk_user_id: str, thread_id: str) -> bool:
+    """Record ownership when a new chat thread is created.
+
+    No conversation or trace content is persisted here. The user upsert makes
+    this safe if a user starts chatting before Clerk's webhook delivery arrives.
+    """
+    thread_uuid = uuid.UUID(thread_id)
+    with psycopg.connect(_database_url()) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                WITH app_user AS (
+                    INSERT INTO users (user_id, clerk_user_id)
+                    VALUES (%s, %s)
+                    ON CONFLICT (clerk_user_id) DO UPDATE
+                    SET clerk_user_id = EXCLUDED.clerk_user_id
+                    RETURNING user_id
+                )
+                INSERT INTO threads (thread_id, user_id)
+                SELECT %s, user_id FROM app_user
+                ON CONFLICT (thread_id) DO NOTHING
+                RETURNING thread_id
+                """,
+                (uuid.uuid4(), clerk_user_id, thread_uuid),
+            )
+            row = cursor.fetchone()
+    return row is not None

@@ -11,6 +11,8 @@ from typing import Any
 
 import httpx
 
+from travel_agent.core.models import FlightSearchPreferences
+
 
 class DuffelAPIError(RuntimeError):
     """A provider response that cannot safely be treated as a flight search result."""
@@ -43,24 +45,53 @@ class DuffelClient:
         await self._client.aclose()
 
     async def search_one_way(
-        self, *, origin: str, destination: str, departure_date: str, travelers: int
+        self,
+        *,
+        origin: str,
+        destination: str,
+        departure_date: str,
+        travelers: int,
+        preferences: FlightSearchPreferences | None = None,
     ) -> dict[str, Any]:
         """Create a one-way Duffel offer request and return its API resource."""
+        preferences = preferences or FlightSearchPreferences()
+        slice_data: dict[str, Any] = {
+            "origin": origin.upper(),
+            "destination": destination.upper(),
+            "departure_date": departure_date,
+        }
+        departure_time = {
+            key: value
+            for key, value in {
+                "from": preferences.departure_time_from,
+                "to": preferences.departure_time_to,
+            }.items()
+            if value is not None
+        }
+        if departure_time:
+            slice_data["departure_time"] = departure_time
+        arrival_time = {
+            key: value
+            for key, value in {
+                "from": preferences.arrival_time_from,
+                "to": preferences.arrival_time_to,
+            }.items()
+            if value is not None
+        }
+        if arrival_time:
+            slice_data["arrival_time"] = arrival_time
+        request_data: dict[str, Any] = {
+            "passengers": [{"type": "adult"} for _ in range(travelers)],
+            "slices": [slice_data],
+        }
+        if preferences.cabin_class is not None:
+            request_data["cabin_class"] = preferences.cabin_class
+        if preferences.max_connections is not None:
+            request_data["max_connections"] = preferences.max_connections
         response = await self._client.post(
             "/air/offer_requests",
             params={"return_offers": "true", "supplier_timeout": "10000"},
-            json={
-                "data": {
-                    "passengers": [{"type": "adult"} for _ in range(travelers)],
-                    "slices": [
-                        {
-                            "origin": origin.upper(),
-                            "destination": destination.upper(),
-                            "departure_date": departure_date,
-                        }
-                    ],
-                }
-            },
+            json={"data": request_data},
         )
         return self._data(response)
 

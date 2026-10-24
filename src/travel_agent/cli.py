@@ -5,6 +5,7 @@ from langchain.messages import HumanMessage
 
 from travel_agent.agents.orchestrator import build_orchestrator_agent
 from travel_agent.core.state import INITIAL_TRIP_PHASE
+from travel_agent.core.responses import PlannerResponse
 from travel_agent.infrastructure.resources import open_resources
 
 
@@ -27,7 +28,12 @@ async def main():
 
             result = await agent.ainvoke(agent_input, config=config, context=res)
             is_new_trip = False
-            print(result["messages"][-1].content)
+            structured_response = result.get("structured_response")
+            if isinstance(structured_response, PlannerResponse):
+                structured_response = structured_response.for_trip_state(result)
+                print(structured_response.model_dump_json(indent=2))
+            else:
+                print(result["messages"][-1].content)
 
 
 if __name__ == "__main__":

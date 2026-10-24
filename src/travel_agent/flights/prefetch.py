@@ -6,7 +6,7 @@ import asyncio
 from dataclasses import dataclass
 from typing import Any
 
-from travel_agent.core.models import Leg
+from travel_agent.core.models import FlightSearchPreferences, Leg
 from travel_agent.flights.duffel import DuffelClient
 
 
@@ -14,6 +14,7 @@ from travel_agent.flights.duffel import DuffelClient
 class PrefetchedOffers:
     signature: tuple[tuple[str, str, str | None], ...]
     travelers: int
+    preferences: FlightSearchPreferences
     task: asyncio.Task[dict[int, dict[str, Any] | Exception]]
 
 
@@ -29,8 +30,9 @@ class FlightPrefetchCache:
 
     def start(
         self, key: str, *, client: DuffelClient, legs: list[Leg], travelers: int,
-        include_selected: bool = False,
+        preferences: FlightSearchPreferences | None = None, include_selected: bool = False,
     ) -> None:
+        preferences = preferences or FlightSearchPreferences()
         targets = [
             (index, leg)
             for index, leg in enumerate(legs)
@@ -40,8 +42,15 @@ class FlightPrefetchCache:
             return
         signature = self._signature(legs)
         existing = self._entries.get(key)
-        if existing and existing.signature == signature and existing.travelers == travelers:
+        if (
+            existing
+            and existing.signature == signature
+            and existing.travelers == travelers
+            and existing.preferences == preferences
+        ):
             return
+        if existing and not existing.task.done():
+            existing.task.cancel()
 
         async def fetch_all() -> dict[int, dict[str, Any] | Exception]:
             semaphore = asyncio.Semaphore(3)
@@ -54,6 +63,7 @@ class FlightPrefetchCache:
                             destination=leg.destination,
                             departure_date=leg.departure_date or "",
                             travelers=travelers,
+                            preferences=preferences,
                         )
                 except Exception as exc:
                     return index, exc
@@ -61,14 +71,28 @@ class FlightPrefetchCache:
             return dict(await asyncio.gather(*(fetch(index, leg) for index, leg in targets)))
 
         self._entries[key] = PrefetchedOffers(
-            signature=signature, travelers=travelers, task=asyncio.create_task(fetch_all())
+            signature=signature,
+            travelers=travelers,
+            preferences=preferences,
+            task=asyncio.create_task(fetch_all()),
         )
 
     async def take(
-        self, key: str, *, legs: list[Leg], travelers: int
+        self,
+        key: str,
+        *,
+        legs: list[Leg],
+        travelers: int,
+        preferences: FlightSearchPreferences | None = None,
     ) -> dict[int, dict[str, Any] | Exception] | None:
+        preferences = preferences or FlightSearchPreferences()
         entry = self._entries.get(key)
-        if not entry or entry.signature != self._signature(legs) or entry.travelers != travelers:
+        if (
+            not entry
+            or entry.signature != self._signature(legs)
+            or entry.travelers != travelers
+            or entry.preferences != preferences
+        ):
             return None
         self._entries.pop(key, None)
         return await entry.task

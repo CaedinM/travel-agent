@@ -9,7 +9,15 @@ load_dotenv()
 # tool-calling loops, anything run once per leg where cost multiplies.
 LLM = ChatOpenAI(
     model="gpt-5-mini",
-    reasoning_effort="low",
+    reasoning_effort="minimal",
+)
+
+# One bounded, no-tools decision per flight leg. Reasoning is disabled to keep this
+# tradeoff explanation off the orchestrator's slower multi-turn path.
+FLIGHT_SELECTOR_LLM = ChatOpenAI(
+    model="gpt-5-mini",
+    reasoning_effort="minimal",
+    max_tokens=180,
 )
 
 # Slower and pricier. Reserved for the reasoning that carries the conversation:

@@ -13,6 +13,20 @@ def _field(value: object, name: str) -> Any:
     return getattr(value, name, None)
 
 
+def _is_iata_code(value: object) -> bool:
+    return isinstance(value, str) and len(value) == 3 and value.isalpha()
+
+
+def _has_complete_itinerary(legs: list[object]) -> bool:
+    """Return whether every leg has the minimum data needed for flight search."""
+    return bool(legs) and all(
+        _is_iata_code(_field(leg, "origin"))
+        and _is_iata_code(_field(leg, "destination"))
+        and bool(_field(leg, "departure_date"))
+        for leg in legs
+    )
+
+
 def next_phase(state: Mapping[str, Any]) -> TripPhase:
     """Return the next valid phase for a fully merged TripState.
 
@@ -38,7 +52,7 @@ def next_phase(state: Mapping[str, Any]) -> TripPhase:
 
     if phase is TripPhase.RESEARCH:
         legs = state.get("legs") or []
-        if legs and all(_field(leg, "departure_date") for leg in legs):
+        if _has_complete_itinerary(legs):
             return TripPhase.FLIGHTS
 
     if phase is TripPhase.FLIGHTS:

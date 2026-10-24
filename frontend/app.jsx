@@ -1,7 +1,17 @@
-import React, { Component, useEffect, useRef, useState } from "https://esm.sh/react@18.3.1";
-import { createRoot } from "https://esm.sh/react-dom@18.3.1/client";
+import React, { Component, useEffect, useRef, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { Clerk } from "@clerk/clerk-js";
+import { ui } from "@clerk/ui";
+import "./styles.css";
+import {
+  CONVERSATION_CACHE_TTL_MS,
+  clearConversationCache,
+  readConversationCache,
+  writeConversationCache,
+} from "./conversation-cache.mjs";
 
 const starters = ["Plan a week in Japan this spring", "Find me a long weekend in Lisbon", "Build a food-first trip through Italy"];
+const MAX_CHAT_MESSAGE_LENGTH = 400;
 const asText = (content) => (typeof content === "string" ? content : String(content ?? ""));
 const messageId = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 
@@ -38,7 +48,7 @@ function TripProgress({ progress }) {
   const hasExactDates = Boolean(progress?.departure_date && progress?.return_date);
   const dates = hasExactDates
     ? `${formatDate(progress.departure_date)} → ${formatDate(progress.return_date)}`
-    : progress?.season ?? "";
+    : "";
   const destinations = progress?.destinations?.join(" · ") ?? "";
   return <aside className="trip-progress" aria-label="Trip planning progress">
     <div className="progress-heading"><p className="eyebrow">TRIP LEDGER</p><h2>Planning<br /><em>progress</em></h2><span className="phase-pill">{progress ? phaseNames[progress.phase] ?? "Planning" : "Not started"}</span></div>
@@ -60,8 +70,17 @@ function Welcome({ onStarter }) {
 function Message({ message }) {
   return <article className={`message ${message.role}`}>
     {message.role === "assistant" && <div className="avatar"><Sparkle /></div>}
-    <div className="message-body">{asText(message.content)}</div>
+    <div className="message-body">{asText(message.content)}{message.destinationSuggestions?.length ? <DestinationSuggestions suggestions={message.destinationSuggestions} /> : null}</div>
   </article>;
+}
+
+function DestinationSuggestions({ suggestions }) {
+  return <section className="destination-suggestions" aria-label="Destination suggestions">
+    {suggestions.map((suggestion) => <article key={`${suggestion.country}-${suggestion.city}`} className="destination-card">
+      <p>{suggestion.country}</p><h3>{suggestion.city}</h3><span>{suggestion.description}</span>
+      {suggestion.reasoning ? <small>{suggestion.reasoning}</small> : null}
+    </article>)}
+  </section>;
 }
 
 function FlightOfferCard({ offer }) {
@@ -101,7 +120,7 @@ function MessageStream({ messages, isSending, error, onStarter, offers }) {
   </section>;
 }
 
-function ChatComposer({ disabled, onSend }) {
+function ChatComposer({ disabled, tokenLimitReached, onSend }) {
   const [draft, setDraft] = useState("");
   const textareaRef = useRef(null);
   useEffect(() => textareaRef.current?.focus(), []);
@@ -120,9 +139,9 @@ function ChatComposer({ disabled, onSend }) {
     onSend(message);
   };
   return <footer className="composer-zone"><form className="composer" onSubmit={submit}>
-    <textarea ref={textareaRef} value={draft} onChange={(event) => { setDraft(event.target.value); resize(); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) submit(event); }} placeholder="Ask anything about your next trip…" rows="1" aria-label="Message travel concierge" />
+    <textarea ref={textareaRef} value={draft} disabled={tokenLimitReached} maxLength={MAX_CHAT_MESSAGE_LENGTH} onChange={(event) => { setDraft(event.target.value); resize(); }} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) submit(event); }} placeholder={tokenLimitReached ? "Upgrade to continue planning" : "Ask anything about your next trip…"} rows="1" aria-label="Message travel concierge" />
     <button className="send" type="submit" disabled={!draft.trim() || disabled} aria-label="Send message"><ArrowUp /></button>
-  </form><p className="composer-note">Travel Agentic AI can make mistakes. Check important details.</p></footer>;
+  </form><div className="composer-meta"><span className="composer-counter" aria-live="polite">{draft.length}/{MAX_CHAT_MESSAGE_LENGTH}</span><p className="composer-note">{tokenLimitReached ? "Your monthly AI allowance is used. Paid access is coming soon." : "Travel Agentic AI can make mistakes. Check important details."}</p></div></footer>;
 }
 
 class ChatErrorBoundary extends Component {
@@ -145,43 +164,148 @@ function UserMenu({ clerk }) {
 function App({ clerk }) {
   const [messages, setMessages] = useState([]);
   const [threadId, setThreadId] = useState(null);
+  const [tripId, setTripId] = useState(null);
   const [progress, setProgress] = useState(null);
+  const [savedTrips, setSavedTrips] = useState([]);
+  const [showSavedTrips, setShowSavedTrips] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [tokenLimitReached, setTokenLimitReached] = useState(false);
   const [error, setError] = useState("");
+  const [cacheNotice, setCacheNotice] = useState("");
   const progressRequest = useRef(0);
-  const refreshProgress = async (nextThreadId) => {
+  const conversationVersion = useRef(0);
+  const cacheLoaded = useRef(false);
+  const userId = clerk.user?.id ?? null;
+  const browserStorage = (() => { try { return window.localStorage; } catch { return null; } })();
+  const persistConversation = (nextMessages, nextThreadId, nextTripId, nextProgress, messageAdded = false) => {
+    if (!cacheLoaded.current || !userId) return;
+    const previous = readConversationCache({ storage: browserStorage, userId });
+    if (!messageAdded && !previous) return;
+    const lastMessageAt = messageAdded ? Date.now() : previous?.lastMessageAt ?? Date.now();
+    const saved = writeConversationCache({ storage: browserStorage, userId, conversation: {
+      version: 1, lastMessageAt, messages: nextMessages, threadId: nextThreadId, tripId: nextTripId, progress: nextProgress,
+    } });
+    if (!saved) setCacheNotice("This browser could not save your conversation for later.");
+  };
+  useEffect(() => {
+    if (!userId || cacheLoaded.current) return;
+    cacheLoaded.current = true;
+    const cached = readConversationCache({ storage: browserStorage, userId });
+    if (!cached) return;
+    setMessages(cached.messages);
+    setThreadId(cached.threadId);
+    setTripId(cached.tripId);
+    setProgress(cached.progress);
+    if (cached.threadId) refreshProgress(cached.threadId, cached);
+  }, [userId]);
+  useEffect(() => {
+    if (!userId || !browserStorage) return undefined;
+    const clearIfExpired = () => {
+      const cached = readConversationCache({ storage: browserStorage, userId });
+      if (cached) return;
+      conversationVersion.current += 1;
+      setMessages([]); setThreadId(null); setTripId(null); setProgress(null);
+    };
+    const interval = window.setInterval(clearIfExpired, CONVERSATION_CACHE_TTL_MS);
+    window.addEventListener("focus", clearIfExpired);
+    return () => { window.clearInterval(interval); window.removeEventListener("focus", clearIfExpired); };
+  }, [userId]);
+  const refreshProgress = async (nextThreadId, conversationForCache = null) => {
     const requestId = ++progressRequest.current;
     try {
       const token = await clerk.session?.getToken();
       const response = await fetch(`/trips/${encodeURIComponent(nextThreadId)}/progress`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
       const data = await response.json().catch(() => null);
       if (!response.ok || !data) throw new Error("Trip progress is unavailable.");
-      if (requestId === progressRequest.current) setProgress(data);
+      if (requestId === progressRequest.current) {
+        setProgress(data);
+        if (conversationForCache) {
+          persistConversation(
+            conversationForCache.messages,
+            conversationForCache.threadId,
+            conversationForCache.tripId,
+            data,
+          );
+        }
+        return data;
+      }
     } catch {
       if (requestId === progressRequest.current) setProgress(null);
+    }
+    return null;
+  };
+  const loadSavedTrips = async () => {
+    try {
+      const token = await clerk.session?.getToken();
+      const response = await fetch("/trips", { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const data = await response.json().catch(() => []);
+      if (response.ok && Array.isArray(data)) setSavedTrips(data.filter((trip) => trip.status === "active"));
+    } catch { setSavedTrips([]); }
+  };
+  useEffect(() => { loadSavedTrips(); }, [clerk]);
+  const resumeSavedTrip = async (savedTripId) => {
+    const version = ++conversationVersion.current;
+    try {
+      const token = await clerk.session?.getToken();
+      const response = await fetch(`/trips/${encodeURIComponent(savedTripId)}/resume`, { method: "POST", headers: token ? { Authorization: `Bearer ${token}` } : {} });
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data?.thread_id) throw new Error(data?.detail || "That trip could not be resumed.");
+      progressRequest.current += 1;
+      if (version !== conversationVersion.current) return;
+      setThreadId(data.thread_id);
+      setTripId(data.trip_id);
+      const restoredMessages = [{ id: messageId(), role: "assistant", content: "I’ve loaded this trip plan. What would you like to work on next?" }];
+      setMessages(restoredMessages);
+      setError("");
+      setShowSavedTrips(false);
+      const restoredProgress = await refreshProgress(data.thread_id, {
+        messages: restoredMessages,
+        threadId: data.thread_id,
+        tripId: data.trip_id,
+      });
+      if (version !== conversationVersion.current) return;
+      persistConversation(restoredMessages, data.thread_id, data.trip_id, restoredProgress, true);
+    } catch (resumeError) {
+      if (version === conversationVersion.current) setError(resumeError instanceof Error ? resumeError.message : "That trip could not be resumed.");
     }
   };
   const sendMessage = async (content) => {
     const message = content.trim();
-    if (!message || isSending) return;
-    setMessages((current) => [...current, { id: messageId(), role: "user", content: message }]);
+    if (!message || isSending || tokenLimitReached) return;
+    const version = conversationVersion.current;
+    const userMessage = { id: messageId(), role: "user", content: message };
+    const nextMessages = [...messages, userMessage];
+    setMessages(nextMessages);
+    persistConversation(nextMessages, threadId, tripId, progress, true);
     setError("");
     setIsSending(true);
     try {
       const token = await clerk.session?.getToken();
       const response = await fetch("/chat", { method: "POST", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ message, thread_id: threadId }) });
       const data = await response.json().catch(() => null);
+      if (version !== conversationVersion.current) return;
+      if (response.status === 402) setTokenLimitReached(true);
       if (!response.ok || !data) throw new Error(data?.detail || "The agent couldn’t respond just now.");
       const nextThreadId = data.thread_id ?? threadId;
       setThreadId(nextThreadId);
-      if (nextThreadId) await refreshProgress(nextThreadId);
-      setMessages((current) => [...current, { id: messageId(), role: "assistant", content: asText(data.response) }]);
+      setTripId(data.trip_id ?? tripId);
+      const refreshedProgress = nextThreadId ? await refreshProgress(nextThreadId, {
+        messages: nextMessages,
+        threadId: nextThreadId,
+        tripId: data.trip_id ?? tripId,
+      }) : progress;
+      if (version !== conversationVersion.current) return;
+      loadSavedTrips();
+      const assistantMessage = { id: messageId(), role: "assistant", content: asText(data.response), destinationSuggestions: data.destination_suggestions ?? [] };
+      const completedMessages = [...nextMessages, assistantMessage];
+      setMessages(completedMessages);
+      persistConversation(completedMessages, nextThreadId, data.trip_id ?? tripId, refreshedProgress, true);
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Something went wrong. Please try again.");
-    } finally { setIsSending(false); }
+      if (version === conversationVersion.current) setError(requestError instanceof Error ? requestError.message : "Something went wrong. Please try again.");
+    } finally { if (version === conversationVersion.current) setIsSending(false); }
   };
-  const resetConversation = () => { progressRequest.current += 1; setMessages([]); setThreadId(null); setProgress(null); setError(""); };
-  return <main className="app-shell"><header className="topbar"><a className="wordmark" href="/" aria-label="Travel Agentic home">Travel Agentic<span>.</span></a><button className="new-chat" onClick={resetConversation}>New conversation</button><UserMenu clerk={clerk} /></header><div className="workspace"><div className="chat-column"><MessageStream messages={messages} isSending={isSending} error={error} onStarter={sendMessage} offers={progress?.flights_ready ? progress.flight_offers : []} /><ChatComposer disabled={isSending} onSend={sendMessage} /></div><TripProgress progress={progress} /></div></main>;
+  const resetConversation = () => { conversationVersion.current += 1; progressRequest.current += 1; clearConversationCache({ storage: browserStorage, userId }); setMessages([]); setThreadId(null); setTripId(null); setProgress(null); setError(""); setCacheNotice(""); };
+  return <main className="app-shell"><header className="topbar"><a className="wordmark" href="/" aria-label="Travel Agentic home">Travel Agentic<span>.</span></a><div className="saved-trips"><button className="saved-trips-toggle" onClick={() => { setShowSavedTrips((visible) => !visible); if (!showSavedTrips) loadSavedTrips(); }}>Saved trips</button>{showSavedTrips && <div className="saved-trips-menu">{savedTrips.length ? savedTrips.map((trip) => <button key={trip.trip_id} onClick={() => resumeSavedTrip(trip.trip_id)}>{trip.title}</button>) : <p>No saved trips yet.</p>}</div>}</div><button className="new-chat" onClick={resetConversation}>New conversation</button><UserMenu clerk={clerk} /></header><div className="workspace"><div className="chat-column">{cacheNotice && <p className="stream-error" role="status">{cacheNotice}</p>}<MessageStream messages={messages} isSending={isSending} error={error} onStarter={sendMessage} offers={progress?.flights_ready ? progress.flight_offers : []} /><ChatComposer disabled={isSending || tokenLimitReached} tokenLimitReached={tokenLimitReached} onSend={sendMessage} /></div><TripProgress progress={progress} /></div></main>;
 }
 
 function SignIn({ clerk }) {
@@ -215,27 +339,8 @@ async function bootstrap() {
     const configResponse = await fetch("/auth/config");
     const config = await configResponse.json().catch(() => null);
     if (!configResponse.ok || !config?.publishable_key) throw new Error("Clerk is not configured for this app.");
-    // This app has no JavaScript build step, so use Clerk's matching hosted UI
-    // and runtime bundles instead of mixing an ESM runtime with a CDN UI bundle.
-    const clerkDomain = atob(config.publishable_key.split("_")[2]).slice(0, -1);
-    const loadScript = (src, attributes = {}) => new Promise((resolve, reject) => {
-      const script = document.createElement("script");
-      script.src = src;
-      script.async = true;
-      script.crossOrigin = "anonymous";
-      Object.entries(attributes).forEach(([name, value]) => script.setAttribute(name, value));
-      script.onload = resolve;
-      script.onerror = () => reject(new Error("Unable to load Clerk's sign-in service."));
-      document.head.appendChild(script);
-    });
-    await loadScript(`https://${clerkDomain}/npm/@clerk/ui@1/dist/ui.browser.js`);
-    await loadScript(
-      `https://${clerkDomain}/npm/@clerk/clerk-js@6/dist/clerk.browser.js`,
-      { "data-clerk-publishable-key": config.publishable_key },
-    );
-    const clerk = window.Clerk;
-    if (!clerk || !window.__internal_ClerkUICtor) throw new Error("Clerk's sign-in UI did not load.");
-    await clerk.load({ ui: { ClerkUI: window.__internal_ClerkUICtor } });
+    const clerk = new Clerk(config.publishable_key);
+    await clerk.load({ ui });
     const screen = clerk.isSignedIn ? <App clerk={clerk} /> : <SignIn clerk={clerk} />;
     createRoot(document.getElementById("root")).render(<ChatErrorBoundary>{screen}</ChatErrorBoundary>);
   } catch (error) {

@@ -122,6 +122,14 @@ def initialize_database() -> None:
             cursor.execute(_CREATE_THREADS_TRIP_INDEX)
 
 
+def check_database_connection() -> None:
+    """Check database readiness with a short timeout and no application writes."""
+    with psycopg.connect(_database_url(), connect_timeout=3) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SET LOCAL statement_timeout = '3s'")
+            cursor.execute("SELECT 1")
+
+
 def create_user(clerk_user_id: str) -> uuid.UUID | None:
     """Create a user record once, tolerating Clerk's webhook retries.
 

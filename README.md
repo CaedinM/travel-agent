@@ -21,7 +21,7 @@ The application does not book flights or accommodation.
 - Auth: Clerk
 - Rate Limiting: Redis
 - Observability: LangSmith (optional)
-- Deployment: Cloudflare Workers + Containers
+- Deployment: Railway (application, Postgres, and Redis)
 
 ## Project layout
 
@@ -128,16 +128,17 @@ only when you intentionally want to delete all local database and cache data:
 docker compose down -v
 ```
 
-## Cloudflare deployment
+## Railway deployment
 
-Production uses Cloudflare Workers + Containers to run the Python API and its
-bundled frontend. In Workers Builds, set **Build command** to
-`npm ci && npm run check:cloudflare && npm run build` and **Deploy command** to
-`npm run deploy`.
+Railway runs the Python API and bundled frontend together, alongside private
+Postgres and Redis services. Railway builds the Dockerfile; `railway.json`
+configures the start command and `/health` readiness check. No separate frontend
+deployment is needed.
 
-See [the Cloudflare deployment guide](docs/cloudflare.md) for required runtime
-secrets, external Postgres/Redis configuration, Clerk settings, and Render data
-migration. This requires a Workers Paid plan and incurs container usage charges.
+See [the Railway deployment guide](docs/railway.md) for service setup, private
+database variable references, Clerk configuration, and validation. The initial
+deployment uses test flights and fresh databases. Native backups are currently
+unconfigured because Railway requires Pro for that feature.
 
 ## Agent evaluation
 

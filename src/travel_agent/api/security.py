@@ -1,11 +1,27 @@
 """HTTP security headers for the browser client."""
 
 import base64
+import os
 import re
+from ipaddress import ip_address
+
+from starlette.requests import Request
 
 _HOSTNAME = re.compile(
     r"(?=.{1,253}\Z)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}\Z"
 )
+
+
+def client_ip(request: Request) -> str:
+    """Read Railway's edge-set client IP without trusting forwarding chains."""
+    if os.environ.get("RAILWAY_ENVIRONMENT_ID"):
+        forwarded_ip = request.headers.get("x-real-ip")
+        if forwarded_ip:
+            try:
+                return str(ip_address(forwarded_ip))
+            except ValueError:
+                pass
+    return request.client.host if request.client else "unknown"
 
 
 def clerk_frontend_api(publishable_key: str | None) -> str | None:

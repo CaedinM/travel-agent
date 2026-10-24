@@ -1,5 +1,10 @@
 import asyncio
+import base64
 import uuid
+from datetime import datetime, timezone
+from unittest.mock import Mock
+
+import pytest
 
 from fastapi import HTTPException
 from starlette.requests import Request
@@ -212,3 +217,20 @@ def test_webhook_requires_signing_secret(monkeypatch):
         assert error.status_code == 503
     else:
         raise AssertionError("Expected an HTTPException")
+
+
+@pytest.mark.parametrize("signature", ["v1,invalid", "no-comma", "v1,AAAA"])
+def test_webhook_rejects_malformed_signatures_without_writing_users(monkeypatch, signature):
+    monkeypatch.setenv("CLERK_WEBHOOK_SIGNING_SECRET", "whsec_" + base64.b64encode(bytes(32)).decode())
+    create_user = Mock()
+    monkeypatch.setattr(webhooks, "create_user", create_user)
+    request = _request()
+    request.scope["headers"] = [
+        (b"svix-id", b"msg_123"),
+        (b"svix-timestamp", str(int(datetime.now(timezone.utc).timestamp())).encode()),
+        (b"svix-signature", signature.encode()),
+    ]
+    with pytest.raises(HTTPException) as error:
+        asyncio.run(webhooks.handle_clerk_webhook(request))
+    assert error.value.status_code == 400
+    create_user.assert_not_called()

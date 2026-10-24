@@ -21,9 +21,10 @@ async def handle_clerk_webhook(request: Request) -> dict[str, str]:
         for header, value in request.headers.items()
         if header.lower() in {"svix-id", "svix-timestamp", "svix-signature"}
     }
+    verifier = Webhook(signing_secret)
     try:
-        event = Webhook(signing_secret).verify(payload, headers)
-    except WebhookVerificationError as error:
+        event = verifier.verify(payload, headers)
+    except (WebhookVerificationError, ValueError) as error:
         raise HTTPException(status_code=400, detail="Invalid Clerk webhook signature.") from error
 
     if event.get("type") != "user.created":

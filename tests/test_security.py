@@ -1,6 +1,34 @@
 import base64
 
-from travel_agent.api.security import clerk_frontend_api, content_security_policy
+import pytest
+from starlette.requests import Request
+
+from travel_agent.api.security import client_ip, clerk_frontend_api, content_security_policy
+
+
+def _request(headers: dict[str, str], client=("192.0.2.1", 12345)) -> Request:
+    return Request({
+        "type": "http", "client": client,
+        "headers": [(key.lower().encode(), value.encode()) for key, value in headers.items()],
+    })
+
+
+@pytest.mark.parametrize("address", ["203.0.113.7", "2001:db8::7"])
+def test_client_ip_uses_railway_edge_header(monkeypatch, address):
+    monkeypatch.setenv("RAILWAY_ENVIRONMENT_ID", "railway-test")
+    assert client_ip(_request({"X-Real-IP": address, "X-Forwarded-For": "spoofed"})) == address
+
+
+@pytest.mark.parametrize("address", ["invalid", "203.0.113.1, 203.0.113.2", ""])
+def test_client_ip_falls_back_for_invalid_or_missing_edge_ip(monkeypatch, address):
+    monkeypatch.setenv("RAILWAY_ENVIRONMENT_ID", "railway-test")
+    assert client_ip(_request({"X-Real-IP": address})) == "192.0.2.1"
+
+
+def test_client_ip_ignores_headers_outside_railway(monkeypatch):
+    monkeypatch.delenv("RAILWAY_ENVIRONMENT_ID", raising=False)
+    assert client_ip(_request({"X-Real-IP": "203.0.113.7"})) == "192.0.2.1"
+    assert client_ip(_request({}, client=None)) == "unknown"
 
 
 def _publishable_key(host: str) -> str:

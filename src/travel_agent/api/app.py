@@ -18,7 +18,8 @@ from pydantic import BaseModel, Field
 
 from travel_agent.agents.orchestrator import build_orchestrator_agent
 from travel_agent.api.auth import current_user_id
-from travel_agent.api.security import content_security_policy
+from travel_agent.api.health import router as health_router
+from travel_agent.api.security import client_ip, content_security_policy
 from travel_agent.api.webhooks import handle_clerk_webhook
 from travel_agent.core.models import BestOffer, FlightPipelineMetric, FlightSearchPreferences
 from travel_agent.core.models import HotelOption, Leg
@@ -261,6 +262,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Travel Agent API", lifespan=lifespan)
+app.include_router(health_router)
 app.mount("/static", StaticFiles(directory="frontend/dist"), name="static")
 
 
@@ -291,7 +293,7 @@ return {count, redis.call('TTL', KEYS[1])}
 
 async def rate_limit(request: Request) -> None:
     """Enforce the per-client fixed-window limit for costly API requests."""
-    client_id = request.client.host if request.client else "unknown"
+    client_id = client_ip(request)
     key = f"rate_limit:{client_id}"
 
     count, ttl = await request.app.state.redis.eval(

@@ -82,6 +82,86 @@ def test_create_thread_links_thread_to_application_user(monkeypatch):
     assert "INSERT INTO threads (thread_id, user_id)" in captured["query"]
 
 
+def test_reserve_monthly_tokens_uses_the_paid_customer_allowance(monkeypatch):
+    queries = []
+    user_id = uuid.uuid4()
+
+    class Cursor:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            pass
+
+        def execute(self, query, parameters):
+            queries.append((query, parameters))
+
+        def fetchone(self):
+            if len(queries) == 1:
+                return (user_id, True)
+            if len(queries) == 3:
+                return (8_000,)
+            return None
+
+    class Connection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            pass
+
+        def cursor(self):
+            return Cursor()
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://example")
+    monkeypatch.setattr(database.psycopg, "connect", lambda _: Connection())
+    month = database.date(2026, 9, 1)
+    monkeypatch.setattr(database, "current_usage_month", lambda: month)
+
+    reservation = database.reserve_monthly_tokens(
+        "user_123", reservation_tokens=8_000, free_monthly_limit=75_000,
+        paid_monthly_limit=750_000,
+    )
+
+    assert reservation == database.TokenReservation(usage_month=month, tokens=8_000)
+    assert queries[2][1][-1] == 750_000
+    assert "tokens_reserved + %s" in queries[2][0]
+
+
+def test_settle_monthly_tokens_records_actual_usage(monkeypatch):
+    captured = {}
+
+    class Cursor:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            pass
+
+        def execute(self, query, parameters):
+            captured["query"] = query
+            captured["parameters"] = parameters
+
+    class Connection:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            pass
+
+        def cursor(self):
+            return Cursor()
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://example")
+    monkeypatch.setattr(database.psycopg, "connect", lambda _: Connection())
+    reservation = database.TokenReservation(database.date(2026, 9, 1), 8_000)
+
+    database.settle_monthly_tokens("user_123", reservation, actual_tokens=1_234)
+
+    assert captured["parameters"] == (8_000, 1_234, "user_123", database.date(2026, 9, 1))
+    assert "tokens_used = tokens_used + %s" in captured["query"]
+
+
 def _request() -> Request:
     async def receive():
         return {"type": "http.request", "body": b'{"test": true}', "more_body": False}

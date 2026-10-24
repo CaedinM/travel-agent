@@ -1,0 +1,27 @@
+{
+  "name": "travel-agentic-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "vite build frontend --base /static/ --outDir dist",
+    "test:frontend": "node --test frontend/*.test.mjs",
+    "deploy": "wrangler deploy",
+    "dev:cloudflare": "wrangler dev",
+    "check:cloudflare": "tsc -p cloudflare/tsconfig.json",
+    "test:cloudflare": "node --experimental-strip-types --test cloudflare/*.test.mjs",
+    "build:container": "docker build --platform linux/amd64 --target production -t travel-agent:cloudflare ."
+  },
+  "dependencies": {
+    "@clerk/clerk-js": "6.34.1",
+    "@clerk/ui": "1.36.0",
+    "@cloudflare/containers": "0.3.7",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261024.1",
+    "typescript": "5.9.3",
+    "vite": "8.3.1",
+    "wrangler": "4.152.0"
+  }
+}

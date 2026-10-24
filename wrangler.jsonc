@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "travel-agent",
+  "main": "cloudflare/index.ts",
+  "compatibility_date": "2026-10-23",
+  "containers": [
+    {
+      "class_name": "TravelAgentContainer",
+      "image": "./Dockerfile",
+      "instance_type": "basic",
+      "max_instances": 1
+    }
+  ],
+  "durable_objects": {
+    "bindings": [{ "name": "TRAVEL_AGENT", "class_name": "TravelAgentContainer" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["TravelAgentContainer"] }],
+  "observability": { "enabled": true },
+  "vars": {
+    "LIVE_MODE": "false",
+    "LANGSMITH_TRACING": "false",
+    "PHOENIX_TRACING_ENABLED": "false"
+  }
+}

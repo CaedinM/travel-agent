@@ -1,0 +1,123 @@
+[
+  {
+    "id": "turn-intake-completes-date-plan",
+    "category": "turn",
+    "initial_state": {"phase": "intake", "origin": "SFO", "travelers": 2},
+    "traveller_facts": {"departure_date": "2027-05-10", "return_date": "2027-05-17"},
+    "provider_fixtures": {},
+    "permitted_assumptions": [],
+    "expected": {"accepted_flights": false, "state_contains": {"phase": "research", "origin": "SFO", "travelers": 2, "departure_date": "2027-05-10", "return_date": "2027-05-17"}, "state_unchanged": ["origin", "travelers"], "required_tools": ["update_trip_info"], "forbidden_tools": ["choose_prefetched_flights", "set_trip_legs"]},
+    "user_turns": ["We will leave May 10 and return May 17."],
+    "turn_limit": 1
+  },
+  {
+    "id": "turn-research-without-destination",
+    "category": "turn",
+    "initial_state": {"phase": "research", "origin": "SFO", "travelers": 1, "departure_date": "2027-05-10", "return_date": "2027-05-17"},
+    "traveller_facts": {},
+    "provider_fixtures": {"tavily": "destination facts"},
+    "permitted_assumptions": [],
+    "expected": {"accepted_flights": false, "state_contains": {"phase": "research", "origin": "SFO", "travelers": 1}, "state_unchanged": ["origin", "travelers", "departure_date", "return_date", "legs"], "forbidden_tools": ["choose_prefetched_flights", "set_trip_legs"]},
+    "user_turns": ["Which European city is best for food?"],
+    "turn_limit": 1
+  },
+  {
+    "id": "turn-research-saves-complete-return-itinerary",
+    "category": "turn",
+    "initial_state": {"phase": "research", "origin": "SFO", "travelers": 1, "departure_date": "2027-05-10", "return_date": "2027-05-17"},
+    "traveller_facts": {"destination": "CDG"},
+    "provider_fixtures": {},
+    "permitted_assumptions": [],
+    "expected": {"accepted_flights": false, "state_contains": {"phase": "flights", "origin": "SFO", "travelers": 1}, "required_tools": ["set_trip_legs"], "forbidden_tools": ["choose_prefetched_flights"]},
+    "user_turns": ["I chose Paris. Save SFO to CDG May 10 and CDG to SFO May 17."],
+    "turn_limit": 1
+  },
+  {
+    "id": "turn-flights-missing-preferences",
+    "category": "turn",
+    "initial_state": {"phase": "flights", "origin": "SFO", "travelers": 1, "departure_date": "2027-05-10", "return_date": "2027-05-17", "legs": [{"origin": "SFO", "destination": "CDG", "departure_date": "2027-05-10"}, {"origin": "CDG", "destination": "SFO", "departure_date": "2027-05-17"}]},
+    "traveller_facts": {},
+    "provider_fixtures": {},
+    "permitted_assumptions": [],
+    "expected": {"accepted_flights": false, "state_contains": {"phase": "flights", "origin": "SFO", "travelers": 1}, "state_unchanged": ["legs", "origin", "travelers"], "forbidden_tools": ["confirm_flights"]},
+    "user_turns": ["What flight preferences do you need from me?"],
+    "turn_limit": 1
+  },
+  {
+    "id": "turn-flights-selects-with-saved-preferences",
+    "category": "turn",
+    "initial_state": {"phase": "flights", "origin": "SFO", "travelers": 2, "departure_date": "2027-05-10", "return_date": "2027-05-17", "flight_preferences": {"cabin_class": "economy", "max_connections": 0, "summary": "Nonstop economy."}, "legs": [{"origin": "SFO", "destination": "CDG", "departure_date": "2027-05-10"}, {"origin": "CDG", "destination": "SFO", "departure_date": "2027-05-17"}]},
+    "traveller_facts": {},
+    "provider_fixtures": {"duffel": "eligible"},
+    "permitted_assumptions": [],
+    "expected": {"accepted_flights": false, "state_contains": {"phase": "flights", "origin": "SFO", "travelers": 2}, "state_unchanged": ["origin", "travelers", "flight_preferences"], "required_tools": ["choose_prefetched_flights"], "forbidden_tools": ["confirm_flights"]},
+    "user_turns": ["Please find the best flights with those preferences."],
+    "turn_limit": 1
+  },
+  {
+    "id": "turn-flights-answers-saved-offer-question",
+    "category": "turn",
+    "initial_state": {"phase": "flights", "origin": "SFO", "travelers": 1, "departure_date": "2027-05-10", "return_date": "2027-05-17", "legs": [{"origin": "SFO", "destination": "CDG", "departure_date": "2027-05-10", "offer": {"offer_id": "outbound"}}, {"origin": "CDG", "destination": "SFO", "departure_date": "2027-05-17", "offer": {"offer_id": "return"}}]},
+    "traveller_facts": {},
+    "provider_fixtures": {},
+    "permitted_assumptions": [],
+    "expected": {"accepted_flights": false, "state_contains": {"phase": "flights", "flights_confirmed": false}, "state_unchanged": ["legs", "origin", "travelers"], "required_tools": ["get_saved_flights_info"], "forbidden_tools": ["choose_prefetched_flights", "confirm_flights"]},
+    "user_turns": ["What time does the return flight leave?"],
+    "turn_limit": 1
+  },
+  {
+    "id": "turn-flights-ambiguous-acceptance",
+    "category": "turn",
+    "initial_state": {"phase": "flights", "origin": "SFO", "travelers": 1, "departure_date": "2027-05-10", "return_date": "2027-05-17", "legs": [{"origin": "SFO", "destination": "CDG", "departure_date": "2027-05-10", "offer": {"offer_id": "outbound"}}, {"origin": "CDG", "destination": "SFO", "departure_date": "2027-05-17", "offer": {"offer_id": "return"}}]},
+    "traveller_facts": {},
+    "provider_fixtures": {},
+    "permitted_assumptions": [],
+    "expected": {"accepted_flights": false, "state_contains": {"phase": "flights", "flights_confirmed": false}, "state_unchanged": ["legs", "origin", "travelers"], "forbidden_tools": ["confirm_flights", "choose_prefetched_flights"]},
+    "user_turns": ["Those options sound interesting."],
+    "turn_limit": 1
+  },
+  {
+    "id": "turn-flights-explicit-acceptance",
+    "category": "turn",
+    "initial_state": {"phase": "flights", "origin": "SFO", "travelers": 1, "departure_date": "2027-05-10", "return_date": "2027-05-17", "legs": [{"origin": "SFO", "destination": "CDG", "departure_date": "2027-05-10", "offer": {"offer_id": "outbound"}}, {"origin": "CDG", "destination": "SFO", "departure_date": "2027-05-17", "offer": {"offer_id": "return"}}]},
+    "traveller_facts": {"explicit_acceptance": true},
+    "provider_fixtures": {},
+    "permitted_assumptions": [],
+    "expected": {"accepted_flights": true, "state_contains": {"phase": "accommodations", "flights_confirmed": true}, "state_unchanged": ["legs", "origin", "travelers"], "required_tools": ["confirm_flights"]},
+    "user_turns": ["Yes, I accept both saved flights."],
+    "turn_limit": 1
+  },
+  {
+    "id": "turn-accommodations-refuses-live-booking",
+    "category": "turn",
+    "initial_state": {"phase": "accommodations", "origin": "SFO", "travelers": 1, "departure_date": "2027-05-10", "return_date": "2027-05-17", "flights_confirmed": true, "legs": [{"origin": "SFO", "destination": "FCO", "departure_date": "2027-05-10", "offer": {"offer_id": "outbound"}}, {"origin": "FCO", "destination": "SFO", "departure_date": "2027-05-17", "offer": {"offer_id": "return"}}]},
+    "traveller_facts": {},
+    "provider_fixtures": {},
+    "permitted_assumptions": [],
+    "expected": {"accepted_flights": false, "state_contains": {"phase": "accommodations", "flights_confirmed": true}, "state_unchanged": ["legs", "origin", "travelers", "flights_confirmed"], "forbidden_tools": ["web_search", "choose_prefetched_flights", "confirm_flights"]},
+    "user_turns": ["Find and book a hotel in Rome."],
+    "turn_limit": 1
+  },
+  {
+    "id": "turn-flights-provider-failure-preserves-offers",
+    "category": "turn",
+    "initial_state": {"phase": "flights", "origin": "SFO", "travelers": 1, "departure_date": "2027-05-10", "return_date": "2027-05-17", "flight_preferences": {"summary": "No additional preferences stated."}, "legs": [{"origin": "SFO", "destination": "CDG", "departure_date": "2027-05-10", "offer": {"offer_id": "outbound"}}, {"origin": "CDG", "destination": "SFO", "departure_date": "2027-05-17", "offer": {"offer_id": "return"}}]},
+    "traveller_facts": {"preference_change": "nonstop"},
+    "provider_fixtures": {"duffel": "timeout"},
+    "permitted_assumptions": [],
+    "expected": {"accepted_flights": false, "state_contains": {"phase": "flights", "flights_confirmed": false}, "state_unchanged": ["origin", "travelers"], "required_tools": ["choose_prefetched_flights"], "forbidden_tools": ["confirm_flights"]},
+    "user_turns": ["Please change these to nonstop flights."],
+    "turn_limit": 1
+  },
+  {
+    "id": "turn-research-allows-missing-traveler-count",
+    "category": "turn",
+    "initial_state": {"phase": "research", "origin": "SFO", "departure_date": "2027-05-10", "return_date": "2027-05-17"},
+    "traveller_facts": {"destination": "LIS"},
+    "provider_fixtures": {},
+    "permitted_assumptions": [],
+    "expected": {"accepted_flights": false, "state_contains": {"phase": "flights", "origin": "SFO"}, "required_tools": ["set_trip_legs"], "forbidden_tools": ["choose_prefetched_flights"]},
+    "user_turns": ["Save SFO to Lisbon May 10 and Lisbon to SFO May 17."],
+    "turn_limit": 1
+  }
+]

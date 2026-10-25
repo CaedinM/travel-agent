@@ -2,7 +2,7 @@ import asyncio
 from datetime import date
 from functools import cache
 from time import perf_counter
-from typing import Annotated
+from typing import Annotated, Any
 
 from dotenv import load_dotenv
 from langchain.messages import ToolMessage
@@ -22,6 +22,7 @@ from travel_agent.core.workflow import apply_phase_transition
 from travel_agent.flights.duffel import DuffelClient
 from travel_agent.flights.prefetch import FlightPrefetchCache
 from travel_agent.flights.flight_selector import (
+    FlightOption,
     baggage_requested,
     enrich_baggage_details,
     parse_duffel_offers,
@@ -179,34 +180,41 @@ def set_trip_legs(runtime: ToolRuntime, legs: list[Leg]) -> Command:
 
 
 _MAX_CONCURRENT_SEARCHES = 3   # keeps clear of Duffel rate limits on long itineraries
-async def _search_and_select_direct_leg(
+
+
+async def search_flights(
+    leg: Leg,
     *,
     client: DuffelClient,
-    selector_model,
-    leg: Leg,
-    leg_index: int,
     travelers: int,
     preferences: FlightSearchPreferences,
-    semaphore: asyncio.Semaphore,
+) -> list[FlightOption]:
+    """Search Duffel for one leg and return normalized flight options."""
+    request = await client.search_one_way(
+        origin=leg.origin,
+        destination=leg.destination,
+        departure_date=leg.departure_date or "",
+        travelers=travelers,
+        preferences=preferences,
+    )
+    return parse_duffel_offers(request)
+
+
+async def select_flight(
+    *,
+    client: DuffelClient,
+    selector_model: Any,
+    options: list[FlightOption],
+    leg_index: int,
+    preferences: FlightSearchPreferences,
 ) -> tuple[BestOffer | None, FlightPipelineMetric]:
-    """Search one leg, then make one bounded model choice from viable offers."""
+    """Prepare options and select a flight matching the traveller's preferences."""
     started = perf_counter()
-    duffel_ms: int | None = None
     baggage_enrichment_ms: int | None = None
     selection_ms: int | None = None
     candidates = 0
     try:
-        duffel_started = perf_counter()
-        async with semaphore:
-            request = await client.search_one_way(
-                origin=leg.origin,
-                destination=leg.destination,
-                departure_date=leg.departure_date or "",
-                travelers=travelers,
-                preferences=preferences,
-            )
-        duffel_ms = round((perf_counter() - duffel_started) * 1000)
-        options = prepare_candidates(parse_duffel_offers(request))
+        options = prepare_candidates(options)
         if baggage_requested(preferences):
             baggage_started = perf_counter()
             options = await enrich_baggage_details(
@@ -225,7 +233,6 @@ async def _search_and_select_direct_leg(
         return offer, FlightPipelineMetric(
             pipeline="model_selection",
             leg_index=leg_index,
-            duffel_ms=duffel_ms,
             baggage_enrichment_ms=baggage_enrichment_ms,
             selection_ms=selection_ms,
             total_ms=round((perf_counter() - started) * 1000),
@@ -239,7 +246,6 @@ async def _search_and_select_direct_leg(
         return None, FlightPipelineMetric(
             pipeline="model_selection",
             leg_index=leg_index,
-            duffel_ms=duffel_ms,
             baggage_enrichment_ms=baggage_enrichment_ms,
             selection_ms=selection_ms,
             total_ms=round((perf_counter() - started) * 1000),
@@ -447,20 +453,30 @@ async def search_and_select_flights(
         return "Cannot search flights; fix these legs with set_trip_legs first:\n" + "\n".join(invalid)
 
     semaphore = asyncio.Semaphore(_MAX_CONCURRENT_SEARCHES)
-    results = await asyncio.gather(
-        *(
-            _search_and_select_direct_leg(
-                client=client,
-                selector_model=selector_model,
-                leg=legs[index],
-                leg_index=index,
-                travelers=travelers,
-                preferences=preferences,
-                semaphore=semaphore,
+
+    async def select_one(index: int) -> tuple[BestOffer | None, FlightPipelineMetric]:
+        started = perf_counter()
+        try:
+            async with semaphore:
+                options = await search_flights(
+                    legs[index], client=client, travelers=travelers, preferences=preferences,
+                )
+        except Exception as exc:  # Preserve successful searches for other legs.
+            return None, FlightPipelineMetric(
+                pipeline="model_selection", leg_index=index,
+                total_ms=round((perf_counter() - started) * 1000), error=str(exc),
             )
-            for index in targets
+        duffel_ms = round((perf_counter() - started) * 1000)
+        offer, metric = await select_flight(
+            client=client, selector_model=selector_model, options=options,
+            leg_index=index, preferences=preferences,
         )
-    )
+        return offer, metric.model_copy(update={
+            "duffel_ms": duffel_ms,
+            "total_ms": round((perf_counter() - started) * 1000),
+        })
+
+    results = await asyncio.gather(*(select_one(index) for index in targets))
     notes = []
     metrics = list(runtime.state.get("flight_pipeline_metrics") or [])
     for index, (offer, metric) in zip(targets, results):
